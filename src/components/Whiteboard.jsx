@@ -1,10 +1,13 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Tldraw, createTLStore} from '@tldraw/tldraw';
+import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
+import {
+    Tldraw, DefaultDashStyle, DefaultSizeStyle, DefaultColorStyle,
+    DefaultFontStyle, DefaultAlignStyle, DefaultVerticalAlignStyle, TldrawUiMenuItem, TldrawUiMenuGroup
+} from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import TLDrawYjsProvider from '../utils/tldraw-yjs-provider';
-import {enhancedShapeUtils, WhiteboardUtils} from '../utils/tldraw-shapes';
+import {enhancedShapeUtils, WhiteboardUtils} from '../utils/tldraw-shapes.jsx';
 
 const Whiteboard = ({
                         roomId,
