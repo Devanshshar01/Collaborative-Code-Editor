@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+README*
+
+# Build scripts
+*.sh
+*.ps1
+docker-compose.yml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

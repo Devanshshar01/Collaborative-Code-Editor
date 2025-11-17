@@ -1,0 +1,294 @@
+config:
+  target: "http://localhost:4000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    
+    # Ramp up to 50 concurrent rooms
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 25
+      name: "Ramp up to load"
+    
+    # Sustained load - 50 concurrent rooms
+    - duration: 300
+      arrivalRate: 25
+      name: "Sustained load (50 concurrent rooms)"
+    
+    # Peak load test
+    - duration: 60
+      arrivalRate: 50
+      name: "Peak load"
+    
+    # Cool down
+    - duration: 30
+      arrivalRate: 5
+      name: "Cool down"
+  
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 5  # Max 5% error rate
+    p95: 2000        # 95th percentile response time < 2000ms
+    p99: 3000        # 99th percentile response time < 3000ms
+  
+  # WebSocket configuration
+  ws:
+    rejectUnauthorized: false
+  
+  # HTTP configuration
+  http:
+    timeout: 30
+  
+  # Variables
+  variables:
+    serverUrl: "http://localhost:4000"
+    wsUrl: "ws://localhost:4000"
+  
+  # Plugins
+  plugins:
+    expect: { }
+    metrics-by-endpoint: { }
+  
+  # Processor for custom logic
+  processor: "./artillery-processor.js"
+
+scenarios:
+  # Scenario 1: Room creation and joining
+  - name: "Create and join rooms"
+    weight: 30
+    engine: http
+    flow:
+      - post:
+          url: "/api/rooms/create"
+          json:
+            userId: "user-{{ $randomNumber(1, 10000) }}"
+            username: "User {{ $randomNumber(1, 10000) }}"
+            name: "Load Test Room {{ $randomNumber(1, 10000) }}"
+          capture:
+            - json: "$.roomId"
+              as: "roomId"
+          expect:
+            - statusCode: 200
+            - hasProperty: "roomId"
+
+      - think: 2
+
+      - get:
+          url: "/api/rooms/{{ roomId }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "roomId"
+
+      - think: 5
+
+  # Scenario 2: Code execution stress test
+  - name: "Execute code in multiple languages"
+    weight: 25
+    engine: http
+    flow:
+      - loop:
+          - post:
+              url: "/api/execute"
+              json:
+                code: "print('Load test {{ $randomNumber(1, 1000) }}')"
+                language: "python"
+              expect:
+                - statusCode: 200
+
+          - think: 1
+
+          - post:
+              url: "/api/execute"
+              json:
+                code: "console.log('Load test {{ $randomNumber(1, 1000) }}');"
+                language: "javascript"
+              expect:
+                - statusCode: 200
+
+          - think: 1
+
+          - post:
+              url: "/api/execute"
+              json:
+                code: |
+                  package main
+                  import "fmt"
+                  func main() {
+                      fmt.Println("Load test")
+                  }
+                language: "go"
+              expect:
+                - statusCode: 200
+
+          - think: 2
+        count: 3
+
+  # Scenario 3: WebSocket collaborative editing
+  - name: "Collaborative editing via WebSocket"
+    weight: 45
+    engine: ws
+    flow:
+      # Connect to WebSocket
+      - send:
+          channel: "/"
+
+      - think: 1
+      
+      # Join room
+      - emit:
+          channel: "join-room"
+          data:
+            roomId: "load-test-room-{{ $randomNumber(1, 50) }}"
+            user:
+              id: "user-{{ $randomNumber(1, 10000) }}"
+              name: "LoadTestUser{{ $randomNumber(1, 10000) }}"
+
+      - think: 2
+      
+      # Simulate code changes
+      - loop:
+          - emit:
+              channel: "code-change"
+              data:
+                roomId: "load-test-room-{{ $randomNumber(1, 50) }}"
+                newCode: "// Code update {{ $randomNumber(1, 1000) }}\nconsole.log('test');"
+
+          - think: 3
+          
+          # Simulate chat message
+          - emit:
+              channel: "chat-message"
+              data:
+                roomId: "load-test-room-{{ $randomNumber(1, 50) }}"
+                userId: "user-{{ $randomNumber(1, 10000) }}"
+                userName: "LoadTestUser{{ $randomNumber(1, 10000) }}"
+                text: "Test message {{ $randomNumber(1, 1000) }}"
+                timestamp: "{{ $timestamp }}"
+
+          - think: 2
+          
+          # Typing indicator
+          - emit:
+              channel: "typing-indicator"
+              data:
+                roomId: "load-test-room-{{ $randomNumber(1, 50) }}"
+                userName: "LoadTestUser{{ $randomNumber(1, 10000) }}"
+                isTyping: true
+
+          - think: 1
+        count: 5
+      
+      # Disconnect
+      - emit:
+          channel: "disconnect"
+
+  # Scenario 4: Room management operations
+  - name: "Room CRUD operations"
+    weight: 10
+    engine: http
+    flow:
+      # Create room
+      - post:
+          url: "/api/rooms/create"
+          json:
+            userId: "user-{{ $randomNumber(1, 10000) }}"
+            username: "User {{ $randomNumber(1, 10000) }}"
+            name: "CRUD Test Room {{ $randomNumber(1, 10000) }}"
+          capture:
+            - json: "$.roomId"
+              as: "roomId"
+            - json: "$.participants[0].userId"
+              as: "userId"
+          expect:
+            - statusCode: 200
+
+      - think: 2
+      
+      # Join room
+      - post:
+          url: "/api/rooms/{{ roomId }}/join"
+          json:
+            userId: "user-{{ $randomNumber(10001, 20000) }}"
+            username: "Participant {{ $randomNumber(1, 1000) }}"
+            role: "editor"
+          expect:
+            - statusCode: 200
+
+      - think: 2
+      
+      # Update code
+      - put:
+          url: "/api/rooms/{{ roomId }}/code"
+          json:
+            userId: "{{ userId }}"
+            code:
+              content: "// Updated code {{ $randomNumber(1, 1000) }}"
+              language: "javascript"
+          expect:
+            - statusCode: 200
+
+      - think: 3
+      
+      # Get room details
+      - get:
+          url: "/api/rooms/{{ roomId }}"
+          expect:
+            - statusCode: 200
+
+      - think: 2
+      
+      # Leave room
+      - post:
+          url: "/api/rooms/{{ roomId }}/leave"
+          json:
+            userId: "{{ userId }}"
+          expect:
+            - statusCode: 200
+
+  # Scenario 5: WebRTC signaling stress test
+  - name: "WebRTC signaling"
+    weight: 15
+    engine: ws
+    flow:
+      - send:
+          channel: "/"
+
+      - think: 1
+
+      - emit:
+          channel: "join-room"
+          data:
+            roomId: "webrtc-room-{{ $randomNumber(1, 20) }}"
+            user:
+              id: "user-{{ $randomNumber(1, 5000) }}"
+              name: "RTCUser{{ $randomNumber(1, 5000) }}"
+
+      - think: 2
+      
+      # Simulate WebRTC offers
+      - loop:
+          - emit:
+              channel: "webrtc:offer"
+              data:
+                roomId: "webrtc-room-{{ $randomNumber(1, 20) }}"
+                targetSocketId: "peer-{{ $randomNumber(1, 100) }}"
+                data:
+                  type: "offer"
+                  sdp: "mock-sdp-{{ $randomNumber(1, 1000) }}"
+
+          - think: 1
+
+          - emit:
+              channel: "webrtc:ice-candidate"
+              data:
+                roomId: "webrtc-room-{{ $randomNumber(1, 20) }}"
+                targetSocketId: "peer-{{ $randomNumber(1, 100) }}"
+                data:
+                  candidate: "mock-ice-{{ $randomNumber(1, 1000) }}"
+
+          - think: 2
+        count: 3
+
+      - think: 5

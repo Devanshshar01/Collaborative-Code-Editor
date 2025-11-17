@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Python executor
+  python-executor:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    image: code-executor-python
+    container_name: code-executor-python-builder
+
+  # Node.js executor (JS, TS, HTML, CSS)
+  node-executor:
+    build:
+      context: ./node
+      dockerfile: Dockerfile
+    image: code-executor-node
+    container_name: code-executor-node-builder
+
+  # Java executor
+  java-executor:
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    image: code-executor-java
+    container_name: code-executor-java-builder
+
+  # C++ executor
+  cpp-executor:
+    build:
+      context: ./cpp
+      dockerfile: Dockerfile
+    image: code-executor-cpp
+    container_name: code-executor-cpp-builder
+
+  # C executor
+  c-executor:
+    build:
+      context: ./c
+      dockerfile: Dockerfile
+    image: code-executor-c
+    container_name: code-executor-c-builder
+
+  # Go executor
+  go-executor:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    image: code-executor-go
+    container_name: code-executor-go-builder

@@ -5,6 +5,13 @@ node_modules/
 
 # Testing
 coverage/
+test-results/
+playwright-report/
+*.spec.js
+*.spec.js.map
+report.json
+report.html
+.nyc_output/
 
 # Production build
 dist/

@@ -22,6 +22,27 @@ A production-ready collaborative code editor with video conferencing, powered by
 - **Screen sharing** capability
 - **Connection status** indicators
 
+### 🆕 Secure Code Execution System
+
+- **Execute code in sandboxed Docker containers** with comprehensive security
+- **Multi-language support**: Python, JavaScript, TypeScript, Java, C++, C, Go, HTML, CSS
+- **RESTful API** endpoint: `POST /api/execute`
+- **Security features**: Network isolation, read-only filesystem, resource limits, timeout enforcement
+- **Resource limits**: 5-second timeout, 256MB memory, 50 process limit
+- **Returns**: stdout, stderr, execution time, exit code
+
+**Quick Start for Code Execution**:
+
+1. Build Docker images: `cd docker && ./build-images.sh`
+2. Server already running at `http://localhost:4000/api/execute`
+3. See `CODE_EXECUTION_SUMMARY.md` for complete guide
+
+**Documentation**:
+
+- **Quick Start**: `EXECUTION_QUICKSTART.md` - Get running in 5 minutes
+- **Complete Guide**: `CODE_EXECUTION_README.md` - Full documentation
+- **Architecture**: `EXECUTION_ARCHITECTURE.md` - Security & design details
+
 ### Architecture
 
 - **Socket.IO** for room management and signaling

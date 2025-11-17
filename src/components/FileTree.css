@@ -1,0 +1,362 @@
+/* File Tree Container */
+.file-tree {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    user-select: none;
+}
+
+/* Header */
+.file-tree-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #252526;
+    border-bottom: 1px solid #3d3d3d;
+}
+
+.file-tree-header h3 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #a0a0a0;
+    letter-spacing: 0.5px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.icon-button {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+    background: #3d3d3d;
+    color: #fff;
+}
+
+/* File Tree Content */
+.file-tree-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+.file-tree-content::-webkit-scrollbar {
+    width: 10px;
+}
+
+.file-tree-content::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.file-tree-content::-webkit-scrollbar-thumb {
+    background: #424242;
+    border-radius: 5px;
+}
+
+.file-tree-content::-webkit-scrollbar-thumb:hover {
+    background: #4e4e4e;
+}
+
+/* File Tree Node */
+.file-tree-node {
+    position: relative;
+}
+
+.node-content {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+}
+
+.node-content:hover {
+    background: #2a2d2e;
+}
+
+.node-content.active {
+    background: #094771;
+}
+
+.node-content.active:hover {
+    background: #0e639c;
+}
+
+/* Drag and Drop States */
+.node-content.dragging {
+    opacity: 0.5;
+    background: #3d3d3d;
+}
+
+.node-content.drop-target {
+    background: #264f78;
+    border-left: 3px solid #007acc;
+    padding-left: 5px;
+}
+
+.node-content.drop-target::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: #007acc;
+}
+
+/* Folder Arrow */
+.folder-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+    font-size: 10px;
+    transition: transform 0.2s ease;
+    color: #a0a0a0;
+}
+
+.folder-arrow:hover {
+    color: #fff;
+}
+
+/* Node Icon */
+.node-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
+    font-size: 16px;
+}
+
+/* Node Name */
+.node-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #d4d4d4;
+}
+
+.node-content.active .node-name {
+    color: #fff;
+    font-weight: 500;
+}
+
+/* Rename Input */
+.rename-input {
+    flex: 1;
+    background: #3c3c3c;
+    border: 1px solid #007acc;
+    color: #d4d4d4;
+    padding: 2px 6px;
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+    border-radius: 2px;
+}
+
+.rename-input:focus {
+    background: #252526;
+    border-color: #007acc;
+}
+
+/* Node Children */
+.node-children {
+    /* Children are rendered with increased padding via style prop */
+}
+
+/* Context Menu */
+.context-menu {
+    background: #252526;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    min-width: 180px;
+    z-index: 1000;
+    padding: 4px 0;
+}
+
+.context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #d4d4d4;
+    transition: background 0.15s ease;
+}
+
+.context-menu-item:hover {
+    background: #2a2d2e;
+    color: #fff;
+}
+
+.context-menu-item.danger {
+    color: #f48771;
+}
+
+.context-menu-item.danger:hover {
+    background: #5a1d1d;
+    color: #ff6b6b;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: #454545;
+    margin: 4px 0;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #a0a0a0;
+    text-align: center;
+}
+
+.empty-state p {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+}
+
+.empty-state button {
+    padding: 8px 16px;
+    background: #007acc;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.empty-state button:hover {
+    background: #0098ff;
+}
+
+.empty-state button:active {
+    background: #005a9e;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.context-menu {
+    animation: fadeIn 0.15s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .file-tree {
+        font-size: 12px;
+    }
+
+    .file-tree-header h3 {
+        font-size: 12px;
+    }
+
+    .node-content {
+        padding: 6px 8px;
+    }
+
+    .context-menu {
+        min-width: 160px;
+    }
+
+    .context-menu-item {
+        padding: 10px 14px;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: more) {
+    .node-content:hover {
+        background: #000;
+    }
+
+    .node-content.active {
+        background: #0078d4;
+        outline: 2px solid #fff;
+    }
+
+    .context-menu {
+        border: 2px solid #fff;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .folder-arrow,
+    .icon-button,
+    .node-content,
+    .context-menu-item {
+        transition: none;
+    }
+
+    .context-menu {
+        animation: none;
+    }
+}
+
+/* Focus Styles for Accessibility */
+.icon-button:focus,
+.rename-input:focus {
+    outline: 2px solid #007acc;
+    outline-offset: 2px;
+}
+
+.node-content:focus-within {
+    outline: 2px solid #007acc;
+    outline-offset: -2px;
+}
+
+/* Print Styles */
+@media print {
+    .file-tree-header {
+        border-bottom: 1px solid #000;
+    }
+
+    .context-menu {
+        display: none;
+    }
+
+    .header-actions {
+        display: none;
+    }
+}

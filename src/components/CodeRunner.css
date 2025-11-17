@@ -1,0 +1,468 @@
+/* Code Runner Container */
+.code-runner {
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 1rem 0;
+}
+
+/* Header Section */
+.runner-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #2d2d2d;
+    border-bottom: 1px solid #3d3d3d;
+}
+
+/* Run Button */
+.run-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.run-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.run-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.run-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.run-button.running {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.play-icon {
+    font-size: 1rem;
+}
+
+/* Spinner Animation */
+.spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Runner Info */
+.runner-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.language-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
+    background: #3d3d3d;
+    color: #a0a0a0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.execution-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #4ade80;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+/* Toggle Output Button */
+.toggle-output {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: #a0a0a0;
+    border: 1px solid #3d3d3d;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toggle-output:hover {
+    background: #3d3d3d;
+    color: white;
+}
+
+/* Output Container */
+.output-container {
+    background: #1a1a1a;
+    min-height: 200px;
+    max-height: 500px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* Custom Scrollbar */
+.output-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.output-container::-webkit-scrollbar-track {
+    background: #1a1a1a;
+}
+
+.output-container::-webkit-scrollbar-thumb {
+    background: #3d3d3d;
+    border-radius: 4px;
+}
+
+.output-container::-webkit-scrollbar-thumb:hover {
+    background: #4d4d4d;
+}
+
+/* Loading State */
+.output-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #a0a0a0;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #3d3d3d;
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+.output-loading p {
+    margin: 0.5rem 0;
+    font-size: 0.95rem;
+}
+
+.loading-hint {
+    font-size: 0.85rem !important;
+    color: #666;
+}
+
+/* Error State */
+.output-error {
+    padding: 1.5rem;
+    background: #2d1a1a;
+    border-left: 4px solid #ef4444;
+}
+
+.error-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.error-icon {
+    font-size: 1.2rem;
+}
+
+.error-title {
+    font-size: 1rem;
+}
+
+.error-message {
+    margin: 0;
+    padding: 1rem;
+    background: #1a1a1a;
+    border-radius: 4px;
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Terminal Output */
+.output-terminal {
+    padding: 1rem;
+}
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.status-bar.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.status-bar.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.status-left,
+.status-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.status-icon {
+    font-size: 1.1rem;
+}
+
+.status-text {
+    font-weight: 600;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.stat-label {
+    opacity: 0.8;
+}
+
+.stat-value {
+    font-weight: 600;
+}
+
+/* Output Sections */
+.output-section {
+    margin-bottom: 1rem;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #2d2d2d;
+    border-radius: 4px 4px 0 0;
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.section-header.error {
+    background: #2d1a1a;
+    color: #ef4444;
+}
+
+.section-icon {
+    font-size: 1rem;
+}
+
+.output-content {
+    margin: 0;
+    padding: 1rem;
+    background: #0d0d0d;
+    border-radius: 0 0 4px 4px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.output-content.stdout {
+    color: #4ade80;
+    border-left: 3px solid #10b981;
+}
+
+.output-content.stderr {
+    color: #fbbf24;
+    border-left: 3px solid #f59e0b;
+}
+
+/* Empty State */
+.output-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.output-empty p {
+    margin: 0.25rem 0;
+}
+
+.empty-hint {
+    font-size: 0.85rem !important;
+    color: #555;
+}
+
+/* Hints */
+.compilation-error-hint,
+.timeout-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+    background: #2d2d1a;
+    border-left: 3px solid #fbbf24;
+    border-radius: 4px;
+    color: #fbbf24;
+    font-size: 0.85rem;
+}
+
+.hint-icon {
+    font-size: 1.1rem;
+}
+
+/* Keyboard Shortcut Hint */
+.shortcut-hint {
+    padding: 0.75rem 1rem;
+    background: #252525;
+    text-align: center;
+    color: #666;
+    font-size: 0.85rem;
+    border-top: 1px solid #3d3d3d;
+}
+
+.shortcut-hint kbd {
+    padding: 0.2rem 0.5rem;
+    background: #3d3d3d;
+    border: 1px solid #4d4d4d;
+    border-radius: 3px;
+    color: #a0a0a0;
+    font-family: inherit;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 0 #2d2d2d;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .runner-header {
+        flex-wrap: wrap;
+    }
+
+    .run-button {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .runner-info {
+        flex: 1 0 100%;
+        order: 3;
+        margin-top: 0.5rem;
+    }
+
+    .toggle-output {
+        flex: 1;
+    }
+
+    .status-bar {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-start;
+    }
+
+    .status-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.output-container {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Selection Colors */
+.output-content::selection {
+    background: #667eea;
+    color: white;
+}
+
+/* Focus Styles */
+.run-button:focus,
+.toggle-output:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Dark Mode Optimizations */
+@media (prefers-color-scheme: dark) {
+    .code-runner {
+        background: #1e1e1e;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .run-button,
+    .toggle-output,
+    .shortcut-hint {
+        display: none;
+    }
+
+    .output-container {
+        max-height: none;
+        overflow: visible;
+    }
+}
