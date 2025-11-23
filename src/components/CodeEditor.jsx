@@ -14,7 +14,7 @@ import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { lintKeymap } from '@codemirror/lint';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
-import { Copy, FileCode, Users, Check, RefreshCw, Sun, Moon, Command } from 'lucide-react';
+import { Copy, FileCode, Users, Check, RefreshCw, Sun, Moon, Command, Play, Terminal, XCircle, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import YjsWebSocketProvider from '../utils/yjs-provider';
 
@@ -24,7 +24,18 @@ const USER_COLORS = [
     '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
 ];
 
-const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'javascript', theme: initialTheme = 'dark', onSyncStatusChange, onUserListChange, onError }) => {
+const CodeEditor = ({
+    roomId,
+    userId,
+    userName,
+    fileTreeManager,
+    activeFileId,
+    language: initialLanguage = 'javascript',
+    theme: initialTheme = 'dark',
+    onSyncStatusChange,
+    onUserListChange,
+    onError
+}) => {
     const editorRef = useRef(null);
     const viewRef = useRef(null);
     const providerRef = useRef(null);
@@ -35,6 +46,11 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
     const [language, setLanguage] = useState(initialLanguage);
     const [theme, setTheme] = useState(initialTheme);
     const [copied, setCopied] = useState(false);
+
+    // Execution state
+    const [isRunning, setIsRunning] = useState(false);
+    const [output, setOutput] = useState(null);
+    const [showOutput, setShowOutput] = useState(false);
 
     // Compartments for dynamic configuration
     const languageCompartment = useRef(new Compartment());
@@ -65,7 +81,7 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
 
         // Use the custom provider
         const provider = new YjsWebSocketProvider(ydoc, {
-            serverUrl: process.env.REACT_APP_SOCKET_URL || 'ws://localhost:4000',
+            serverUrl: import.meta.env.VITE_YJS_URL || 'ws://localhost:1234',
             roomId,
             userId,
             onConnect: () => {
@@ -132,7 +148,18 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
     useEffect(() => {
         if (!editorRef.current || !ydocRef.current) return;
 
-        const ytext = ydocRef.current.getText('codemirror');
+        // Get the Y.Text for the active file, or use default if no file selected
+        let ytext;
+        if (activeFileId && fileTreeManager) {
+            ytext = fileTreeManager.getFileContent(activeFileId);
+            if (!ytext) {
+                console.warn('No content found for file:', activeFileId);
+                ytext = ydocRef.current.getText('codemirror'); // Fallback
+            }
+        } else {
+            ytext = ydocRef.current.getText('codemirror'); // Default shared editor
+        }
+
         const undoManager = new Y.UndoManager(ytext);
 
         // Create editor state with all extensions
@@ -262,7 +289,7 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
         return () => {
             view.destroy();
         };
-    }, [language, theme, isConnected]);
+    }, [language, theme, isConnected, activeFileId, fileTreeManager]);
 
     // Update language dynamically
     const changeLanguage = useCallback((newLanguage) => {
@@ -302,6 +329,110 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleRunCode = async () => {
+        const code = getCode();
+        if (!code.trim()) return;
+
+        setIsRunning(true);
+        setShowOutput(true);
+        setOutput(null);
+
+        try {
+            // Check if backend execution service is available
+            const response = await fetch('http://localhost:4000/api/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code,
+                    language,
+                }),
+            });
+
+            if (!response.ok) {
+                // If backend is not running or returns error, fallback to client-side for JS
+                if (language === 'javascript') {
+                    try {
+                        // Capture console.log output
+                        const logs = [];
+                        const originalLog = console.log;
+                        console.log = (...args) => {
+                            logs.push(args.map(arg =>
+                                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                            ).join(' '));
+                            originalLog(...args);
+                        };
+
+                        // Execute code safely
+                        // eslint-disable-next-line no-new-func
+                        new Function(code)();
+
+                        console.log = originalLog;
+
+                        setOutput({
+                            stdout: logs.join('\n') || 'Code executed successfully (no output)',
+                            stderr: '',
+                            exitCode: 0
+                        });
+                    } catch (err) {
+                        setOutput({
+                            stdout: '',
+                            stderr: err.toString(),
+                            exitCode: 1
+                        });
+                    }
+                } else {
+                    throw new Error(`Execution service unavailable. Client-side execution not supported for ${language}.`);
+                }
+            } else {
+                const result = await response.json();
+                setOutput(result);
+            }
+        } catch (error) {
+            console.error('Execution failed:', error);
+
+            // Fallback for JS if fetch failed
+            if (language === 'javascript') {
+                try {
+                    const logs = [];
+                    const originalLog = console.log;
+                    console.log = (...args) => {
+                        logs.push(args.map(arg =>
+                            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                        ).join(' '));
+                        originalLog(...args);
+                    };
+
+                    // eslint-disable-next-line no-new-func
+                    new Function(code)();
+
+                    console.log = originalLog;
+
+                    setOutput({
+                        stdout: logs.join('\n') || 'Code executed successfully (no output)',
+                        stderr: '',
+                        exitCode: 0
+                    });
+                } catch (err) {
+                    setOutput({
+                        stdout: '',
+                        stderr: err.toString(),
+                        exitCode: 1
+                    });
+                }
+            } else {
+                setOutput({
+                    stdout: '',
+                    stderr: `Error: ${error.message}\n\nMake sure the backend execution service is running on port 4000.`,
+                    exitCode: 1
+                });
+            }
+        } finally {
+            setIsRunning(false);
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-surface-dark/50 backdrop-blur-sm rounded-xl overflow-hidden border border-white/5 shadow-xl">
             {/* Status bar */}
@@ -323,6 +454,23 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Run Button */}
+                    <button
+                        onClick={handleRunCode}
+                        disabled={isRunning}
+                        className={clsx(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-lg",
+                            isRunning
+                                ? "bg-white/10 text-text-muted cursor-not-allowed"
+                                : "bg-green-600 hover:bg-green-500 text-white shadow-green-600/20"
+                        )}
+                    >
+                        {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                        Run
+                    </button>
+
+                    <div className="h-4 w-px bg-white/10 mx-1" />
+
                     <div className="relative group">
                         <select
                             value={language}
@@ -373,16 +521,69 @@ const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'jav
             </div>
 
             {/* Editor */}
-            <div className="flex-1 relative overflow-hidden bg-[#1e1e1e]">
-                <div
-                    ref={editorRef}
-                    className="h-full w-full overflow-auto custom-scrollbar"
-                />
+            <div className="flex-1 relative overflow-hidden bg-[#1e1e1e] flex flex-col">
+                <div className="flex-1 relative">
+                    <div
+                        ref={editorRef}
+                        className="h-full w-full overflow-auto custom-scrollbar"
+                    />
+                </div>
+
+                {/* Output Panel */}
+                {showOutput && (
+                    <div className="h-1/3 border-t border-white/10 bg-[#1e1e1e] flex flex-col animate-slide-up">
+                        <div className="flex items-center justify-between px-4 py-2 bg-surface border-b border-white/5">
+                            <div className="flex items-center gap-2 text-xs font-bold text-text-secondary uppercase tracking-wider">
+                                <Terminal className="w-3.5 h-3.5" />
+                                Console Output
+                            </div>
+                            <button
+                                onClick={() => setShowOutput(false)}
+                                className="text-text-secondary hover:text-white transition-colors"
+                            >
+                                <XCircle className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="flex-1 p-4 overflow-auto font-mono text-xs">
+                            {output ? (
+                                <>
+                                    {output.stdout && (
+                                        <pre className="text-text-primary whitespace-pre-wrap">{output.stdout}</pre>
+                                    )}
+                                    {output.stderr && (
+                                        <pre className="text-red-400 whitespace-pre-wrap mt-2">{output.stderr}</pre>
+                                    )}
+                                    <div className="mt-4 text-[10px] text-text-muted">
+                                        Process exited with code {output.exitCode}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex items-center gap-2 text-text-muted">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    Running code...
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Toolbar */}
             <div className="flex items-center justify-between px-4 py-2 bg-surface border-t border-white/5 text-xs">
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowOutput(!showOutput)}
+                        className={clsx(
+                            "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all border",
+                            showOutput
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : "bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary border-white/5 hover:border-white/10"
+                        )}
+                    >
+                        <Terminal className="w-3.5 h-3.5" />
+                        Console
+                    </button>
+
                     <button
                         onClick={formatCode}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary transition-all border border-white/5 hover:border-white/10"
