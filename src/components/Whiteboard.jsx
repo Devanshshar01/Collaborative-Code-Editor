@@ -1,23 +1,20 @@
-import React, {useState, useRef, useEffect, useMemo, useCallback} from 'react';
-import {
-    Tldraw, DefaultDashStyle, DefaultSizeStyle, DefaultColorStyle,
-    DefaultFontStyle, DefaultAlignStyle, DefaultVerticalAlignStyle, TldrawUiMenuItem, TldrawUiMenuGroup
-} from '@tldraw/tldraw';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Tldraw, createTLStore } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import TLDrawYjsProvider from '../utils/tldraw-yjs-provider';
-import {enhancedShapeUtils, WhiteboardUtils} from '../utils/tldraw-shapes.jsx';
+import { enhancedShapeUtils, WhiteboardUtils } from '../utils/tldraw-shapes.jsx';
 
 const Whiteboard = ({
-                        roomId,
-                        userId,
-                        userName,
-                        isAdmin = false,
-                        onStatsChange,
-                        onError,
-                        onUsersChange
-                    }) => {
+    roomId,
+    userId,
+    userName,
+    isAdmin = false,
+    onStatsChange,
+    onError,
+    onUsersChange
+}) => {
     const [store, setStore] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isSynced, setIsSynced] = useState(false);
@@ -313,13 +310,13 @@ const Whiteboard = ({
                             height: '8px',
                             borderRadius: '50%',
                             backgroundColor: isConnected ? (isSynced ? '#4caf50' : '#ff9800') : '#f44336'
-                        }}/>
-                        <span style={{color: '#666'}}>
+                        }} />
+                        <span style={{ color: '#666' }}>
                             {isConnected ? (isSynced ? 'Synced' : 'Syncing...') : 'Offline'}
                         </span>
                     </div>
 
-                    <div style={{fontSize: '14px', color: '#666'}}>
+                    <div style={{ fontSize: '14px', color: '#666' }}>
                         📊 {stats.shapes} shapes • 👥 {stats.users + 1} users
                     </div>
 
@@ -496,9 +493,9 @@ const Whiteboard = ({
                     fontWeight: 'bold',
                     zIndex: 2000
                 }}>
-                    <div style={{textAlign: 'center'}}>
+                    <div style={{ textAlign: 'center' }}>
                         <div>📸 Exporting whiteboard...</div>
-                        <div style={{fontSize: '14px', marginTop: '8px', opacity: 0.8}}>
+                        <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.8 }}>
                             Please wait while we generate your file
                         </div>
                     </div>

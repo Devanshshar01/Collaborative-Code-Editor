@@ -1,18 +1,21 @@
-import React, {useEffect, useRef, useState, useCallback} from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as Y from 'yjs';
-import {yCollab, yUndoManagerKeymap} from 'y-codemirror.next';
-import {EditorView, basicSetup} from '@codemirror/basic-setup';
-import {EditorState, Compartment} from '@codemirror/state';
-import {ViewPlugin, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars} from '@codemirror/view';
-import {javascript} from '@codemirror/lang-javascript';
-import {python} from '@codemirror/lang-python';
-import {java} from '@codemirror/lang-java';
-import {oneDark} from '@codemirror/theme-one-dark';
-import {indentWithTab} from '@codemirror/commands';
-import {autocompletion, completionKeymap} from '@codemirror/autocomplete';
-import {lintKeymap} from '@codemirror/lint';
-import {searchKeymap, highlightSelectionMatches} from '@codemirror/search';
-import {defaultKeymap, historyKeymap} from '@codemirror/commands';
+import { yCollab, yUndoManagerKeymap } from 'y-codemirror.next';
+import { EditorView } from '@codemirror/view';
+import { basicSetup } from 'codemirror';
+import { EditorState, Compartment } from '@codemirror/state';
+import { ViewPlugin, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars } from '@codemirror/view';
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
+import { indentWithTab } from '@codemirror/commands';
+import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
+import { lintKeymap } from '@codemirror/lint';
+import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
+import { defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { Copy, FileCode, Users, Check, RefreshCw, Sun, Moon, Command } from 'lucide-react';
+import clsx from 'clsx';
 import YjsWebSocketProvider from '../utils/yjs-provider';
 
 // User colors for cursors
@@ -21,74 +24,66 @@ const USER_COLORS = [
     '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E', '#6C5CE7'
 ];
 
-// Language mode configurations
-const languageConfigs = {
-    javascript: javascript({jsx: true, typescript: true}),
-    python: python(),
-    java: java()
-};
-
-const CodeEditor = ({
-                        roomId,
-                        userId,
-                        userName = 'Anonymous',
-                        language = 'javascript',
-                        theme = 'dark',
-                        onSyncStatusChange,
-                        onUserListChange,
-                        onError
-                    }) => {
+const CodeEditor = ({ roomId, userId, userName, language: initialLanguage = 'javascript', theme: initialTheme = 'dark', onSyncStatusChange, onUserListChange, onError }) => {
     const editorRef = useRef(null);
     const viewRef = useRef(null);
-    const ydocRef = useRef(null);
     const providerRef = useRef(null);
-    const languageCompartment = useRef(new Compartment());
-    const themeCompartment = useRef(new Compartment());
-
+    const ydocRef = useRef(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isSynced, setIsSynced] = useState(false);
     const [users, setUsers] = useState([]);
-    const [userColor] = useState(() => USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)]);
+    const [language, setLanguage] = useState(initialLanguage);
+    const [theme, setTheme] = useState(initialTheme);
+    const [copied, setCopied] = useState(false);
 
-    // Initialize Yjs document and provider
+    // Compartments for dynamic configuration
+    const languageCompartment = useRef(new Compartment());
+    const themeCompartment = useRef(new Compartment());
+
+    // Language configurations
+    const languageConfigs = {
+        javascript: javascript(),
+        python: python(),
+        java: java()
+    };
+
+    // User color
+    const userColor = React.useMemo(() => {
+        let hash = 0;
+        for (let i = 0; i < userId.length; i++) {
+            hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+    }, [userId]);
+
+    // Initialize Yjs and Provider
     useEffect(() => {
         if (!roomId || !userId) return;
 
-        // Create Yjs document
         const ydoc = new Y.Doc();
         ydocRef.current = ydoc;
 
-        // Get the shared text type
-        const ytext = ydoc.getText('codemirror');
-
-        // Create WebSocket provider
+        // Use the custom provider
         const provider = new YjsWebSocketProvider(ydoc, {
+            serverUrl: process.env.REACT_APP_SOCKET_URL || 'ws://localhost:4000',
             roomId,
             userId,
-            serverUrl: process.env.REACT_APP_YJS_URL || 'ws://localhost:1234',
             onConnect: () => {
-                console.log('Connected to collaboration server');
                 setIsConnected(true);
-                onSyncStatusChange?.({connected: true, synced: false});
+                onSyncStatusChange?.({ connected: true, synced: false });
             },
             onDisconnect: () => {
-                console.log('Disconnected from collaboration server');
                 setIsConnected(false);
-                setIsSynced(false);
-                onSyncStatusChange?.({connected: false, synced: false});
+                onSyncStatusChange?.({ connected: false, synced: false });
             },
             onError: (error) => {
-                console.error('Collaboration error:', error);
+                console.error('Provider error:', error);
                 onError?.(error);
-            },
-            onVersionConflict: (localVersion, serverVersion) => {
-                console.warn(`Version conflict detected: local=${localVersion}, server=${serverVersion}`);
-                // Could show a modal asking user to reload or continue
             }
         });
         providerRef.current = provider;
 
-        // Set user awareness information
+        // Awareness (cursors)
         const awareness = provider.getAwareness();
         awareness.setLocalStateField('user', {
             name: userName,
@@ -101,7 +96,7 @@ const CodeEditor = ({
             const synced = provider.isSynced();
             if (synced !== isSynced) {
                 setIsSynced(synced);
-                onSyncStatusChange?.({connected: isConnected, synced});
+                onSyncStatusChange?.({ connected: isConnected, synced });
             }
         }, 1000);
 
@@ -149,11 +144,11 @@ const CodeEditor = ({
                 // Language support (configurable)
                 languageCompartment.current.of(languageConfigs[language] || languageConfigs.javascript),
 
-                // Theme (configurable)
-                themeCompartment.current.of(theme === 'dark' ? oneDark : []),
+                // Theme (configurable) - VS Code Dark+
+                themeCompartment.current.of(theme === 'dark' ? vscodeDark : []),
 
                 // Yjs collaboration
-                yCollab(ytext, providerRef.current?.getAwareness(), {undoManager}),
+                yCollab(ytext, providerRef.current?.getAwareness(), { undoManager }),
 
                 // Key bindings
                 keymap.of([
@@ -177,10 +172,21 @@ const CodeEditor = ({
                 EditorView.theme({
                     "&": {
                         height: "100%",
-                        fontSize: "14px"
+                        fontSize: "14px",
+                        fontFamily: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+                        backgroundColor: "transparent"
                     },
                     ".cm-content": {
-                        padding: "12px"
+                        padding: "0"
+                    },
+                    ".cm-gutters": {
+                        backgroundColor: "transparent",
+                        borderRight: "1px solid rgba(255, 255, 255, 0.05)",
+                        color: "#6e7681"
+                    },
+                    ".cm-activeLineGutter": {
+                        backgroundColor: "rgba(255, 255, 255, 0.05)",
+                        color: "#e2e8f0"
                     },
                     ".cm-focused": {
                         outline: "none"
@@ -190,20 +196,20 @@ const CodeEditor = ({
                         top: "-1.5em",
                         left: "0",
                         fontSize: "10px",
-                        fontFamily: "sans-serif",
-                        background: "inherit",
-                        color: "inherit",
+                        fontFamily: "'Inter', sans-serif",
+                        fontWeight: "600",
                         padding: "2px 6px",
-                        borderRadius: "3px",
+                        borderRadius: "4px",
                         whiteSpace: "nowrap",
-                        zIndex: 100
+                        zIndex: 100,
+                        boxShadow: "0 2px 5px rgba(0,0,0,0.2)"
                     },
                     ".cm-ySelectionCaretDot": {
                         display: "inline-block",
-                        width: "4px",
+                        width: "2px",
                         height: "14px",
-                        marginLeft: "-2px",
-                        borderRadius: "2px",
+                        marginLeft: "-1px",
+                        borderRadius: "0",
                         position: "relative",
                         top: "2px"
                     },
@@ -224,7 +230,7 @@ const CodeEditor = ({
                     update(update) {
                         if (update.docChanged && !update.transactions.some(tr => tr.annotation(Y.UndoManager))) {
                             // Document changed by remote user
-                            console.log('Document updated by remote user');
+                            // Could trigger a toast or subtle indicator
                         }
                     }
                 }),
@@ -264,6 +270,7 @@ const CodeEditor = ({
             viewRef.current.dispatch({
                 effects: languageCompartment.current.reconfigure(languageConfigs[newLanguage])
             });
+            setLanguage(newLanguage);
         }
     }, []);
 
@@ -271,8 +278,9 @@ const CodeEditor = ({
     const changeTheme = useCallback((newTheme) => {
         if (viewRef.current) {
             viewRef.current.dispatch({
-                effects: themeCompartment.current.reconfigure(newTheme === 'dark' ? oneDark : [])
+                effects: themeCompartment.current.reconfigure(newTheme === 'dark' ? vscodeDark : [])
             });
+            setTheme(newTheme);
         }
     }, []);
 
@@ -287,161 +295,116 @@ const CodeEditor = ({
         console.log('Format code not yet implemented');
     }, []);
 
+    const handleCopy = () => {
+        const code = getCode();
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     return (
-        <div className="code-editor-container" style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+        <div className="flex flex-col h-full bg-surface-dark/50 backdrop-blur-sm rounded-xl overflow-hidden border border-white/5 shadow-xl">
             {/* Status bar */}
-            <div className="editor-status-bar" style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 16px',
-                background: theme === 'dark' ? '#1e1e1e' : '#f5f5f5',
-                borderBottom: '1px solid ' + (theme === 'dark' ? '#333' : '#ddd'),
-                fontSize: '12px',
-                color: theme === 'dark' ? '#ccc' : '#666'
-            }}>
-                <div className="status-left">
-          <span className="connection-status" style={{marginRight: '16px'}}>
-            <span
-                style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: isConnected ? (isSynced ? '#4caf50' : '#ff9800') : '#f44336',
-                    marginRight: '6px'
-                }}
-            />
-              {isConnected ? (isSynced ? 'Synced' : 'Syncing...') : 'Offline'}
-          </span>
-                    <span className="room-info">
-            Room: {roomId}
-          </span>
+            <div className="flex justify-between items-center px-4 py-2 bg-surface border-b border-white/5">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/5 border border-white/5">
+                        <div className={clsx(
+                            "w-2 h-2 rounded-full animate-pulse",
+                            isConnected ? (isSynced ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-yellow-500") : "bg-red-500"
+                        )} />
+                        <span className="text-xs font-medium text-text-secondary">
+                            {isConnected ? (isSynced ? 'Synced' : 'Syncing...') : 'Offline'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-text-muted">
+                        <FileCode className="w-3.5 h-3.5" />
+                        <span>Room: <span className="text-text-primary font-mono">{roomId}</span></span>
+                    </div>
                 </div>
 
-                <div className="status-center">
-                    <select
-                        value={language}
-                        onChange={(e) => changeLanguage(e.target.value)}
-                        style={{
-                            background: 'transparent',
-                            border: '1px solid ' + (theme === 'dark' ? '#555' : '#ccc'),
-                            color: 'inherit',
-                            padding: '2px 8px',
-                            borderRadius: '3px',
-                            marginRight: '8px'
-                        }}
-                    >
-                        <option value="javascript">JavaScript</option>
-                        <option value="python">Python</option>
-                        <option value="java">Java</option>
-                    </select>
+                <div className="flex items-center gap-3">
+                    <div className="relative group">
+                        <select
+                            value={language}
+                            onChange={(e) => changeLanguage(e.target.value)}
+                            className="appearance-none bg-surface-light border border-white/10 text-text-primary px-3 py-1 pr-8 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer hover:bg-white/10 transition-colors"
+                        >
+                            <option value="javascript">JavaScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                        </select>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <svg className="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
 
                     <button
                         onClick={() => changeTheme(theme === 'dark' ? 'light' : 'dark')}
-                        style={{
-                            background: 'transparent',
-                            border: '1px solid ' + (theme === 'dark' ? '#555' : '#ccc'),
-                            color: 'inherit',
-                            padding: '2px 8px',
-                            borderRadius: '3px',
-                            cursor: 'pointer'
-                        }}
+                        className="p-1.5 rounded-md hover:bg-white/10 text-text-secondary hover:text-yellow-400 transition-all"
+                        title="Toggle Theme"
                     >
-                        {theme === 'dark' ? '☀️' : '🌙'}
+                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                     </button>
                 </div>
 
-                <div className="status-right">
-          <span className="user-count">
-            👥 {users.length + 1} users online
-          </span>
-                    {users.slice(0, 5).map((user, index) => (
-                        <span
-                            key={user.id}
-                            title={user.name}
-                            style={{
-                                display: 'inline-block',
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                backgroundColor: user.color,
-                                marginLeft: '4px',
-                                textAlign: 'center',
-                                lineHeight: '24px',
-                                fontSize: '11px',
-                                color: '#fff',
-                                fontWeight: 'bold'
-                            }}
-                        >
-              {user.name[0].toUpperCase()}
-            </span>
-                    ))}
+                <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2 mr-2">
+                        {users.slice(0, 5).map((user) => (
+                            <div
+                                key={user.id}
+                                title={user.name}
+                                className="w-6 h-6 rounded-full border-2 border-surface flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                                style={{ backgroundColor: user.color }}
+                            >
+                                {user.name[0].toUpperCase()}
+                            </div>
+                        ))}
+                        {users.length > 5 && (
+                            <div className="w-6 h-6 rounded-full border-2 border-surface bg-surface-light flex items-center justify-center text-[10px] font-bold text-text-secondary">
+                                +{users.length - 5}
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-text-secondary bg-white/5 px-2 py-1 rounded-md">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{users.length + 1}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Editor */}
-            <div
-                ref={editorRef}
-                className="code-editor"
-                style={{
-                    flex: 1,
-                    overflow: 'auto',
-                    background: theme === 'dark' ? '#282c34' : '#fff'
-                }}
-            />
+            <div className="flex-1 relative overflow-hidden bg-[#1e1e1e]">
+                <div
+                    ref={editorRef}
+                    className="h-full w-full overflow-auto custom-scrollbar"
+                />
+            </div>
 
             {/* Toolbar */}
-            <div className="editor-toolbar" style={{
-                display: 'flex',
-                padding: '8px 16px',
-                background: theme === 'dark' ? '#1e1e1e' : '#f5f5f5',
-                borderTop: '1px solid ' + (theme === 'dark' ? '#333' : '#ddd'),
-                gap: '8px'
-            }}>
-                <button
-                    onClick={formatCode}
-                    style={{
-                        padding: '4px 12px',
-                        background: theme === 'dark' ? '#333' : '#fff',
-                        border: '1px solid ' + (theme === 'dark' ? '#555' : '#ccc'),
-                        color: theme === 'dark' ? '#ccc' : '#333',
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                    }}
-                >
-                    Format Code
-                </button>
+            <div className="flex items-center justify-between px-4 py-2 bg-surface border-t border-white/5 text-xs">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={formatCode}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary transition-all border border-white/5 hover:border-white/10"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Format
+                    </button>
 
-                <button
-                    onClick={() => {
-                        const code = getCode();
-                        navigator.clipboard.writeText(code);
-                        console.log('Code copied to clipboard');
-                    }}
-                    style={{
-                        padding: '4px 12px',
-                        background: theme === 'dark' ? '#333' : '#fff',
-                        border: '1px solid ' + (theme === 'dark' ? '#555' : '#ccc'),
-                        color: theme === 'dark' ? '#ccc' : '#333',
-                        borderRadius: '3px',
-                        cursor: 'pointer',
-                        fontSize: '12px'
-                    }}
-                >
-                    Copy Code
-                </button>
+                    <button
+                        onClick={handleCopy}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/5 hover:bg-white/10 text-text-secondary hover:text-text-primary transition-all border border-white/5 hover:border-white/10"
+                    >
+                        {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                </div>
 
-                <div style={{flex: 1}}/>
-
-                <span style={{
-                    fontSize: '11px',
-                    color: theme === 'dark' ? '#666' : '#999',
-                    alignSelf: 'center'
-                }}>
-          Ctrl+Z: Undo | Ctrl+Y: Redo | Ctrl+F: Find | Tab: Indent
-        </span>
+                <div className="flex items-center gap-4 text-text-muted font-mono text-[10px] opacity-60">
+                    <span className="flex items-center gap-1"><Command className="w-3 h-3" />Z Undo</span>
+                    <span className="flex items-center gap-1"><Command className="w-3 h-3" />Y Redo</span>
+                    <span className="flex items-center gap-1"><Command className="w-3 h-3" />F Find</span>
+                </div>
             </div>
         </div>
     );

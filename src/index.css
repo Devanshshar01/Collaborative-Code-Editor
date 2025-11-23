@@ -2,53 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for sidebar */
-@layer utilities {
-    .scrollbar-thin::-webkit-scrollbar {
-        width: 6px;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    .scrollbar-thin::-webkit-scrollbar-track {
-        background: #1e1e1e;
-    }
-
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-        background: #3e3e42;
-        border-radius: 3px;
-    }
-
-    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        background: #555;
+@layer base {
+    body {
+        @apply bg-background text-text-primary font-sans antialiased;
     }
 }
 
-/* Custom animations */
-@keyframes slideIn {
+@layer components {
+    .glass {
+        @apply bg-surface/30 backdrop-blur-md border border-white/10 shadow-glass;
+    }
+
+    .glass-panel {
+        @apply bg-surface/40 backdrop-blur-lg border border-white/5 shadow-xl;
+    }
+
+    .btn-primary {
+        @apply px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-md transition-all duration-200 shadow-lg shadow-primary/20 font-medium;
+    }
+
+    .btn-secondary {
+        @apply px-4 py-2 bg-surface hover:bg-surface-light text-text-primary border border-white/10 rounded-md transition-all duration-200 font-medium;
+    }
+
+    .btn-icon {
+        @apply p-2 rounded-md hover:bg-white/10 transition-colors text-text-secondary hover:text-text-primary;
+    }
+
+    .input-field {
+        @apply bg-background-secondary border border-border rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-surface-light rounded-full border-2 border-background;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-lighter;
+}
+
+/* Animations */
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
     from {
-        transform: translateX(-100%);
+        opacity: 0;
     }
+
     to {
-        transform: translateX(0);
+        opacity: 1;
     }
-}
-
-.animate-slide-in {
-    animation: slideIn 0.3s ease-out;
-}
-
-/* File tree custom styles */
-.file-tree-node {
-    transition: background-color 0.2s ease;
-}
-
-.file-tree-node:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* Chat message bubble */
-.chat-bubble {
-    max-width: 80%;
-    word-wrap: break-word;
-    border-radius: 12px;
-    padding: 8px 12px;
 }
