@@ -44,7 +44,7 @@ const Whiteboard = ({
         // Initialize Yjs provider
         const provider = new TLDrawYjsProvider(roomId, userId, {
             userName,
-            serverUrl: process.env.REACT_APP_YJS_URL || 'ws://localhost:1234',
+            serverUrl: import.meta.env.VITE_YJS_URL || 'ws://localhost:1234',
             enablePersistence: true,
             maxShapes: 10000,
             onConnect: () => {

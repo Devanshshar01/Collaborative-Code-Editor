@@ -1,5 +1,5 @@
 import * as Y from 'yjs';
-import {IndexeddbPersistence} from 'y-indexeddb';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import YjsWebSocketProvider from './yjs-provider';
 
 /**
@@ -11,7 +11,7 @@ export class TLDrawYjsProvider {
         this.roomId = roomId;
         this.userId = userId;
         this.options = {
-            serverUrl: 'ws://localhost:1234',
+            serverUrl: import.meta.env.VITE_YJS_URL || 'ws://localhost:1234',
             enablePersistence: true,
             maxShapes: 10000, // Limit for performance
             ...options

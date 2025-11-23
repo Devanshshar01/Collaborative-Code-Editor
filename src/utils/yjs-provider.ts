@@ -40,7 +40,7 @@ export class YjsWebSocketProvider {
 
         // Set default options
         this.options = {
-            serverUrl: 'ws://localhost:1234',
+            serverUrl: import.meta.env.VITE_YJS_URL || 'ws://localhost:1234',
             onConnect: () => {
             },
             onDisconnect: () => {
@@ -187,7 +187,7 @@ export class YjsWebSocketProvider {
         });
 
         // Listen for awareness updates
-        this.awareness.on('update', ({added, updated, removed}: any, origin: any) => {
+        this.awareness.on('update', ({ added, updated, removed }: any, origin: any) => {
             if (origin !== this && this.ws && this.ws.readyState === WebSocket.OPEN) {
                 const changedClients = added.concat(updated, removed);
                 const encoder = encoding.createEncoder();

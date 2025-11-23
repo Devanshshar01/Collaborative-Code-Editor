@@ -1,9 +1,9 @@
-import {useState, useEffect, useRef} from 'react';
-import {io, Socket} from 'socket.io-client';
-import {User, Room} from '../types';
+import { useState, useEffect, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { User, Room } from '../types';
 
 // Use environment variable for server URL, with a fallback for local development
-const SERVER_URL = process.env.REACT_APP_WEBSOCKET_URL || 'http://localhost:4000';
+const SERVER_URL = import.meta.env.VITE_WEBSOCKET_URL || 'http://localhost:4000';
 const MAX_RETRIES = 5;
 
 /**
@@ -117,7 +117,7 @@ export const useSocket = (): UseSocketReturn => {
     const joinRoom = (roomId: string, user: User) => {
         if (socketRef.current?.connected) {
             roomIdRef.current = roomId; // Store roomId for later use
-            socketRef.current.emit('join-room', {roomId, user});
+            socketRef.current.emit('join-room', { roomId, user });
         } else {
             console.error('Socket not connected. Cannot join room.');
         }
@@ -141,5 +141,5 @@ export const useSocket = (): UseSocketReturn => {
         }
     };
 
-    return {isConnected, users, code, socket: socketRef.current, joinRoom, leaveRoom, sendCodeChange};
+    return { isConnected, users, code, socket: socketRef.current, joinRoom, leaveRoom, sendCodeChange };
 };
