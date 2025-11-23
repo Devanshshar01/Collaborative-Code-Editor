@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Code2,
     Video,
@@ -60,17 +60,17 @@ function App() {
         }
     }, [isConnected, roomId, userId, userName]);
 
-    const handleSyncStatusChange = (status) => {
+    const handleSyncStatusChange = useCallback((status) => {
         setSyncStatus(status);
-    };
+    }, []);
 
-    const handleUserListChange = (users) => {
+    const handleUserListChange = useCallback((users) => {
         setOnlineUsers(users);
-    };
+    }, []);
 
-    const handleError = (error) => {
+    const handleError = useCallback((error) => {
         console.error('App error:', error);
-    };
+    }, []);
 
     const handleNameChange = (newName) => {
         setUserName(newName);
@@ -135,8 +135,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('editor')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'editor'
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <Code2 className="w-3.5 h-3.5" />
@@ -145,8 +145,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('whiteboard')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'whiteboard'
-                                    ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <PenTool className="w-3.5 h-3.5" />
@@ -155,8 +155,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('split')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'split'
-                                    ? 'bg-accent-teal text-white shadow-lg shadow-accent-teal/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-accent-teal text-white shadow-lg shadow-accent-teal/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <Split className="w-3.5 h-3.5" />
@@ -189,8 +189,8 @@ function App() {
                     <button
                         onClick={() => setShowVideo(prev => !prev)}
                         className={`p-2 rounded-lg transition-all border ${showVideo
-                                ? 'bg-primary/20 border-primary/50 text-primary'
-                                : 'bg-surface-light/30 border-transparent text-text-secondary hover:text-white hover:bg-surface-light/50'
+                            ? 'bg-primary/20 border-primary/50 text-primary'
+                            : 'bg-surface-light/30 border-transparent text-text-secondary hover:text-white hover:bg-surface-light/50'
                             }`}
                         title="Toggle Video"
                     >

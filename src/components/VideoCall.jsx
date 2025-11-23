@@ -1,9 +1,11 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import io from 'socket.io-client';
-import {SIGNALING_EVENTS} from '../types/video';
+import { SIGNALING_EVENTS } from '../types/video';
 import SimplePeer from 'simple-peer';
 import WebRTCDebugger from '../utils/webrtc-debug';
-import {DEFAULT_WEBRTC_CONFIG, TURN_ONLY_CONFIG, WebRTCUtils, WebRTCErrorCodes} from '../config/webrtc';
+import { DEFAULT_WEBRTC_CONFIG, TURN_ONLY_CONFIG, WebRTCUtils, WebRTCErrorCodes } from '../config/webrtc';
+import { Mic, MicOff, Video, VideoOff, Monitor, MonitorOff, AlertCircle, Activity, Download, Users } from 'lucide-react';
+import clsx from 'clsx';
 
 const MAX_PARTICIPANTS = 6;
 const ICE_CONNECTION_TIMEOUT = 30000; // 30 seconds
@@ -17,22 +19,22 @@ const mediaConstraints = {
         sampleRate: 48000
     },
     video: {
-        width: {ideal: 1280},
-        height: {ideal: 720},
-        frameRate: {ideal: 60, max: 120}
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 60, max: 120 }
     }
 };
 
 const VideoCall = ({
-                       roomId,
-                       userId,
-                       userName,
-                       serverUrl,
-                       stunServers,
-                       onParticipantsChange,
-                       onError,
-                       enableDebugMode = true
-                   }) => {
+    roomId,
+    userId,
+    userName,
+    serverUrl,
+    stunServers,
+    onParticipantsChange,
+    onError,
+    enableDebugMode = true
+}) => {
     const [peers, setPeers] = useState([]);
     const [localStream, setLocalStream] = useState(null);
     const [isMuted, setIsMuted] = useState(false);
@@ -40,7 +42,12 @@ const VideoCall = ({
     const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [connectionErrors, setConnectionErrors] = useState([]);
     const [iceConnectionStates, setIceConnectionStates] = useState(new Map());
-    const [retryAttempts, setRetryAttempts] = useState(new Map());
+
+    const localStreamRef = useRef(null);
+    const isMutedRef = useRef(false);
+    const isVideoEnabledRef = useRef(true);
+    const retryAttemptsRef = useRef(new Map());
+    const createPeerRef = useRef(null);
 
     const socketRef = useRef(null);
     const peersRef = useRef({});
@@ -93,11 +100,7 @@ const VideoCall = ({
         }
 
         // Clear retry attempts
-        setRetryAttempts(prev => {
-            const newAttempts = new Map(prev);
-            newAttempts.delete(peerId);
-            return newAttempts;
-        });
+        retryAttemptsRef.current.delete(peerId);
 
         // Clear ICE connection state
         setIceConnectionStates(prev => {
@@ -121,7 +124,7 @@ const VideoCall = ({
         if (stream) {
             stream.getTracks().forEach(track => {
                 track.stop();
-                log(`🛑 Stopped ${track.kind} track`, {id: track.id});
+                log(`🛑 Stopped ${track.kind} track`, { id: track.id });
             });
         }
     }, [log]);
@@ -143,7 +146,7 @@ const VideoCall = ({
     }, [logError, onError]);
 
     const retryPeerConnection = useCallback(async (peerId, initiator, metadata, useTurnOnly = false) => {
-        const currentRetries = retryAttempts.get(peerId) || 0;
+        const currentRetries = retryAttemptsRef.current.get(peerId) || 0;
         const maxRetries = useTurnOnly ? 2 : 3;
 
         if (currentRetries >= maxRetries) {
@@ -158,20 +161,24 @@ const VideoCall = ({
 
         log(`🔄 Retrying connection to ${peerId} (attempt ${currentRetries + 1}/${maxRetries})${useTurnOnly ? ' with TURN only' : ''}`);
 
-        setRetryAttempts(prev => new Map(prev).set(peerId, currentRetries + 1));
+        retryAttemptsRef.current.set(peerId, currentRetries + 1);
 
         // Clean up existing peer
         cleanupPeer(peerId);
 
         // Wait before retry
         setTimeout(() => {
-            createPeer(peerId, initiator, metadata, useTurnOnly);
+            if (createPeerRef.current) {
+                createPeerRef.current(peerId, initiator, metadata, useTurnOnly);
+            }
         }, PEER_CONNECTION_RETRY_DELAY);
-    }, [retryAttempts, logError, log, cleanupPeer]);
+    }, [logError, log, cleanupPeer]);
 
     const toggleMute = useCallback(() => {
-        if (!localStream) return;
-        const audioTracks = localStream.getAudioTracks();
+        const stream = localStreamRef.current;
+        if (!stream) return;
+
+        const audioTracks = stream.getAudioTracks();
         audioTracks.forEach(track => {
             track.enabled = !track.enabled;
             log(`🎤 Audio track ${track.enabled ? 'enabled' : 'disabled'}`);
@@ -179,6 +186,7 @@ const VideoCall = ({
 
         const newMutedState = !audioTracks[0]?.enabled;
         setIsMuted(newMutedState);
+        isMutedRef.current = newMutedState;
 
         // Debug audio echo if unmuting
         if (!newMutedState && debuggerRef.current) {
@@ -188,7 +196,7 @@ const VideoCall = ({
                     remoteStreams.set(peer.peerId, peer.stream);
                 }
             });
-            debuggerRef.current.debugAudioEcho(localStream, remoteStreams);
+            debuggerRef.current.debugAudioEcho(stream, remoteStreams);
         }
 
         socketRef.current?.emit(audioTracks[0]?.enabled ? SIGNALING_EVENTS.UNMUTE : SIGNALING_EVENTS.MUTE, {
@@ -198,14 +206,16 @@ const VideoCall = ({
                 userId,
                 userName,
                 audioEnabled: audioTracks[0]?.enabled ?? true,
-                videoEnabled: isVideoEnabled
+                videoEnabled: isVideoEnabledRef.current
             }
         });
-    }, [localStream, roomId, userId, userName, isVideoEnabled, log, peers]);
+    }, [roomId, userId, userName, log, peers]);
 
     const toggleVideo = useCallback(() => {
-        if (!localStream) return;
-        const videoTracks = localStream.getVideoTracks();
+        const stream = localStreamRef.current;
+        if (!stream) return;
+
+        const videoTracks = stream.getVideoTracks();
         videoTracks.forEach(track => {
             track.enabled = !track.enabled;
             log(`📹 Video track ${track.enabled ? 'enabled' : 'disabled'}`);
@@ -213,6 +223,7 @@ const VideoCall = ({
 
         const newVideoState = videoTracks[0]?.enabled ?? false;
         setIsVideoEnabled(newVideoState);
+        isVideoEnabledRef.current = newVideoState;
 
         socketRef.current?.emit(newVideoState ? SIGNALING_EVENTS.VIDEO_ON : SIGNALING_EVENTS.VIDEO_OFF, {
             roomId,
@@ -220,11 +231,11 @@ const VideoCall = ({
                 socketId: socketRef.current?.id,
                 userId,
                 userName,
-                audioEnabled: !isMuted,
+                audioEnabled: !isMutedRef.current,
                 videoEnabled: newVideoState
             }
         });
-    }, [isMuted, localStream, roomId, userId, userName, log]);
+    }, [roomId, userId, userName, log]);
 
     const startScreenShare = useCallback(async () => {
         if (!navigator.mediaDevices?.getDisplayMedia) {
@@ -235,7 +246,7 @@ const VideoCall = ({
 
         try {
             log('🖥️ Starting screen share');
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({video: true, audio: false});
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
             screenShareStreamRef.current = screenStream;
             setIsScreenSharing(true);
 
@@ -249,7 +260,7 @@ const VideoCall = ({
                 stopScreenShare();
             };
 
-            socketRef.current?.emit(SIGNALING_EVENTS.SCREEN_SHARE_ON, {roomId});
+            socketRef.current?.emit(SIGNALING_EVENTS.SCREEN_SHARE_ON, { roomId });
         } catch (error) {
             logError('Screen share failed', error);
             handleMediaError(error, 'screen-share');
@@ -275,7 +286,7 @@ const VideoCall = ({
         screenShareStreamRef.current = null;
         setIsScreenSharing(false);
 
-        socketRef.current?.emit(SIGNALING_EVENTS.SCREEN_SHARE_OFF, {roomId});
+        socketRef.current?.emit(SIGNALING_EVENTS.SCREEN_SHARE_OFF, { roomId });
     }, [localStream, roomId, log, stopStreamTracks]);
 
     const handleIncomingSignal = useCallback((fromSocketId, signal, metadata) => {
@@ -284,7 +295,7 @@ const VideoCall = ({
             try {
                 peer.signal(signal);
                 if (metadata) {
-                    setPeers(prev => prev.map(p => p.peerId === fromSocketId ? {...p, metadata} : p));
+                    setPeers(prev => prev.map(p => p.peerId === fromSocketId ? { ...p, metadata } : p));
                     onParticipantsChange?.(Object.keys(peersRef.current));
                 }
             } catch (error) {
@@ -300,7 +311,8 @@ const VideoCall = ({
     }, [log, logError, onParticipantsChange]);
 
     const createPeer = useCallback((targetSocketId, initiator, metadata, useTurnOnly = false) => {
-        if (!localStream) {
+        const stream = localStreamRef.current;
+        if (!stream) {
             logError('Cannot create peer without local stream');
             return null;
         }
@@ -312,7 +324,7 @@ const VideoCall = ({
         const peer = new SimplePeer({
             initiator,
             trickle: true,
-            stream: localStream,
+            stream: stream,
             config: {
                 iceServers: config.iceServers,
                 iceCandidatePoolSize: config.iceCandidatePoolSize,
@@ -358,7 +370,7 @@ const VideoCall = ({
                 socketRef.current?.emit(SIGNALING_EVENTS.ICE_CANDIDATE, {
                     roomId,
                     targetSocketId,
-                    data: {signal}
+                    data: { signal }
                 });
             } else {
                 log(`📡 Sending ${signal.type} to ${targetSocketId}`);
@@ -371,8 +383,8 @@ const VideoCall = ({
                             socketId: socketRef.current?.id,
                             userId,
                             userName,
-                            audioEnabled: !isMuted,
-                            videoEnabled: isVideoEnabled
+                            audioEnabled: !isMutedRef.current,
+                            videoEnabled: isVideoEnabledRef.current
                         }
                     }
                 });
@@ -390,11 +402,7 @@ const VideoCall = ({
             }
 
             // Clear retry attempts
-            setRetryAttempts(prev => {
-                const newAttempts = new Map(prev);
-                newAttempts.delete(targetSocketId);
-                return newAttempts;
-            });
+            retryAttemptsRef.current.delete(targetSocketId);
         });
 
         peer.on('stream', stream => {
@@ -420,7 +428,7 @@ const VideoCall = ({
                 const newPeer = {
                     peerId: targetSocketId,
                     stream,
-                    metadata: metadata || {userName: 'Participant', audioEnabled: true, videoEnabled: true}
+                    metadata: metadata || { userName: 'Participant', audioEnabled: true, videoEnabled: true }
                 };
                 if (existing) {
                     return prev.map(p => p.peerId === targetSocketId ? {
@@ -475,14 +483,19 @@ const VideoCall = ({
 
         peersRef.current[targetSocketId] = peer;
         return peer;
-    }, [cleanupPeer, isMuted, isVideoEnabled, localStream, roomId, userId, userName, log, logError, retryPeerConnection]);
+    }, [cleanupPeer, roomId, userId, userName, log, logError, retryPeerConnection]);
+
+    // Update createPeerRef whenever createPeer changes
+    useEffect(() => {
+        createPeerRef.current = createPeer;
+    }, [createPeer]);
 
     // Initialize media and socket connection
     useEffect(() => {
         log('🚀 Initializing VideoCall component');
 
         // Initialize Socket.IO connection
-        socketRef.current = io(serverUrl, {transports: ['websocket']});
+        socketRef.current = io(serverUrl, { transports: ['websocket'] });
         const socket = socketRef.current;
 
         const initializeMedia = async () => {
@@ -497,13 +510,14 @@ const VideoCall = ({
                 });
 
                 setLocalStream(stream);
+                localStreamRef.current = stream;
 
                 if (localVideoRef.current) {
                     localVideoRef.current.srcObject = stream;
                     log('📺 Local video element configured');
                 }
 
-                socket.emit('join-room', {roomId, user: {id: userId, name: userName}});
+                socket.emit('join-room', { roomId, user: { id: userId, name: userName } });
                 socket.emit('webrtc-metadata', {
                     roomId,
                     metadata: {
@@ -525,7 +539,7 @@ const VideoCall = ({
 
         // Socket event handlers
         socket.on('user-joined', users => {
-            log(`👥 Users joined room`, {userCount: users.length});
+            log(`👥 Users joined room`, { userCount: users.length });
             users.slice(0, MAX_PARTICIPANTS).forEach(user => {
                 const socketId = user.id;
                 if (socketId !== socket.id && !peersRef.current[socketId]) {
@@ -539,12 +553,12 @@ const VideoCall = ({
             });
         });
 
-        socket.on('webrtc-peer-metadata', ({fromSocketId, metadata}) => {
+        socket.on('webrtc-peer-metadata', ({ fromSocketId, metadata }) => {
             log(`📋 Received metadata from ${fromSocketId}`, metadata);
-            setPeers(prev => prev.map(peer => peer.peerId === fromSocketId ? {...peer, metadata} : peer));
+            setPeers(prev => prev.map(peer => peer.peerId === fromSocketId ? { ...peer, metadata } : peer));
         });
 
-        socket.on(SIGNALING_EVENTS.OFFER, ({fromSocketId, data}) => {
+        socket.on(SIGNALING_EVENTS.OFFER, ({ fromSocketId, data }) => {
             log(`📥 Received OFFER from ${fromSocketId}`);
             const peer = createPeer(fromSocketId, false, data.metadata);
             if (peer) {
@@ -558,12 +572,12 @@ const VideoCall = ({
             }
         });
 
-        socket.on(SIGNALING_EVENTS.ANSWER, ({fromSocketId, data}) => {
+        socket.on(SIGNALING_EVENTS.ANSWER, ({ fromSocketId, data }) => {
             log(`📥 Received ANSWER from ${fromSocketId}`);
             handleIncomingSignal(fromSocketId, data.signal, data.metadata);
         });
 
-        socket.on(SIGNALING_EVENTS.ICE_CANDIDATE, ({fromSocketId, data}) => {
+        socket.on(SIGNALING_EVENTS.ICE_CANDIDATE, ({ fromSocketId, data }) => {
             log(`🧊 Received ICE candidate from ${fromSocketId}`);
             const peer = peersRef.current[fromSocketId];
             if (peer) {
@@ -591,7 +605,7 @@ const VideoCall = ({
         return () => {
             log('🧹 VideoCall component cleanup');
             stopScreenShare();
-            stopStreamTracks(localStream);
+            stopStreamTracks(localStreamRef.current);
             cleanupAllPeers();
 
             // Clear all timeouts
@@ -600,48 +614,39 @@ const VideoCall = ({
 
             socket.disconnect();
         };
-    }, [cleanupAllPeers, createPeer, handleIncomingSignal, handleMediaError, localStream, log, logError, onError, roomId, serverUrl, stopScreenShare, stopStreamTracks, userId, userName]);
+    }, [cleanupAllPeers, createPeer, handleIncomingSignal, handleMediaError, log, logError, onError, roomId, serverUrl, stopScreenShare, stopStreamTracks, userId, userName]);
 
     // Debug panel component
     const DebugPanel = () => {
         if (!enableDebugMode) return null;
 
         return (
-            <div className="debug-panel" style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: 'rgba(0,0,0,0.8)',
-                color: 'white',
-                padding: '10px',
-                borderRadius: '5px',
-                fontSize: '12px',
-                maxWidth: '300px',
-                zIndex: 1000
-            }}>
-                <div><strong>🔧 Debug Info</strong></div>
-                <div>Peers: {Object.keys(peersRef.current).length}</div>
-                <div>Errors: {connectionErrors.length}</div>
-                {Array.from(iceConnectionStates.entries()).map(([peerId, state]) => (
-                    <div key={peerId}>
-                        {peerId.slice(0, 8)}: {state}
-                    </div>
-                ))}
+            <div className="absolute top-2 right-2 bg-surface-dark/90 text-white p-3 rounded-lg text-xs max-w-xs z-50 backdrop-blur-sm border border-white/10 shadow-xl">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
+                    <Activity className="w-3 h-3 text-primary" />
+                    <strong className="font-medium">Debug Info</strong>
+                </div>
+                <div className="space-y-1 font-mono opacity-80">
+                    <div>Peers: {Object.keys(peersRef.current).length}</div>
+                    <div>Errors: {connectionErrors.length}</div>
+                    {Array.from(iceConnectionStates.entries()).map(([peerId, state]) => (
+                        <div key={peerId} className="flex justify-between">
+                            <span>{peerId.slice(0, 8)}:</span>
+                            <span className={clsx({
+                                'text-green-400': state === 'connected',
+                                'text-yellow-400': state === 'checking',
+                                'text-red-400': state === 'failed' || state === 'disconnected'
+                            })}>{state}</span>
+                        </div>
+                    ))}
+                </div>
                 {debuggerRef.current && (
                     <button
                         onClick={() => debuggerRef.current.exportDebugReport()}
-                        style={{
-                            marginTop: '5px',
-                            padding: '2px 5px',
-                            fontSize: '10px',
-                            background: 'transparent',
-                            border: '1px solid white',
-                            color: 'white',
-                            borderRadius: '3px',
-                            cursor: 'pointer'
-                        }}
+                        className="mt-3 w-full flex items-center justify-center gap-2 px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors"
                     >
-                        Export Debug Report
+                        <Download className="w-3 h-3" />
+                        Export Report
                     </button>
                 )}
             </div>
@@ -649,179 +654,127 @@ const VideoCall = ({
     };
 
     return (
-        <div className="video-call-container" style={{position: 'relative', height: '100%'}}>
-            <DebugPanel/>
+        <div className="relative h-full flex flex-col bg-background-secondary overflow-hidden">
+            <DebugPanel />
 
-            <div className="video-grid" style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '10px',
-                padding: '10px',
-                height: 'calc(100% - 80px)'
-            }}>
-                <div className="video-tile local" style={{
-                    position: 'relative',
-                    background: '#000',
-                    borderRadius: '8px',
-                    overflow: 'hidden'
-                }}>
-                    <video
-                        ref={localVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        style={{width: '100%', height: '100%', objectFit: 'cover'}}
-                    />
-                    <div className="participant-name" style={{
-                        position: 'absolute',
-                        bottom: '5px',
-                        left: '5px',
-                        background: 'rgba(0,0,0,0.7)',
-                        color: 'white',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px'
-                    }}>
-                        {userName} (You)
-                        {isMuted && <span> 🔇</span>}
-                        {!isVideoEnabled && <span> 📹</span>}
-                        {isScreenSharing && <span> 🖥️</span>}
-                    </div>
-                </div>
-
-                {peers.map(peer => (
-                    <div key={peer.peerId} className="video-tile remote" style={{
-                        position: 'relative',
-                        background: '#000',
-                        borderRadius: '8px',
-                        overflow: 'hidden'
-                    }}>
+            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
+                    {/* Local Video */}
+                    <div className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-lg border border-white/5 group">
                         <video
-                            data-peer-id={peer.peerId}
+                            ref={localVideoRef}
                             autoPlay
                             playsInline
-                            ref={video => {
-                                if (video && peer.stream) {
-                                    video.srcObject = peer.stream;
-                                }
-                            }}
-                            style={{width: '100%', height: '100%', objectFit: 'cover'}}
+                            muted
+                            className="w-full h-full object-cover transform scale-x-[-1]"
                         />
-                        <div className="participant-name" style={{
-                            position: 'absolute',
-                            bottom: '5px',
-                            left: '5px',
-                            background: 'rgba(0,0,0,0.7)',
-                            color: 'white',
-                            padding: '2px 8px',
-                            borderRadius: '12px',
-                            fontSize: '12px'
-                        }}>
-                            {peer.metadata?.userName || 'Participant'}
-                            {!peer.metadata?.audioEnabled && <span> 🔇</span>}
-                            {!peer.metadata?.videoEnabled && <span> 📹</span>}
-                            <span style={{
-                                display: 'inline-block',
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                marginLeft: '5px',
-                                backgroundColor:
-                                    iceConnectionStates.get(peer.peerId) === 'connected' ? '#4caf50' :
-                                        iceConnectionStates.get(peer.peerId) === 'checking' ? '#ff9800' : '#f44336'
-                            }}/>
+                        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-100 transition-opacity">
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/5">
+                                    <span className="text-xs font-medium text-white">{userName} (You)</span>
+                                </div>
+                                <div className="flex gap-1">
+                                    {isMuted && <div className="p-1 rounded bg-red-500/80 text-white"><MicOff className="w-3 h-3" /></div>}
+                                    {!isVideoEnabled && <div className="p-1 rounded bg-red-500/80 text-white"><VideoOff className="w-3 h-3" /></div>}
+                                    {isScreenSharing && <div className="p-1 rounded bg-blue-500/80 text-white"><Monitor className="w-3 h-3" /></div>}
+                                </div>
+                            </div>
                         </div>
                     </div>
-                ))}
-            </div>
 
-            <div className="controls" style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '10px',
-                padding: '20px',
-                background: 'rgba(0,0,0,0.1)',
-                borderTop: '1px solid #333'
-            }}>
-                <button
-                    onClick={toggleMute}
-                    style={{
-                        padding: '10px 20px',
-                        borderRadius: '25px',
-                        border: 'none',
-                        background: isMuted ? '#f44336' : '#4caf50',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}
-                >
-                    {isMuted ? '🔇 Unmute' : '🎤 Mute'}
-                </button>
-
-                <button
-                    onClick={toggleVideo}
-                    style={{
-                        padding: '10px 20px',
-                        borderRadius: '25px',
-                        border: 'none',
-                        background: isVideoEnabled ? '#4caf50' : '#f44336',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}
-                >
-                    {isVideoEnabled ? '📹 Video On' : '📹 Video Off'}
-                </button>
-
-                <button
-                    onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-                    style={{
-                        padding: '10px 20px',
-                        borderRadius: '25px',
-                        border: 'none',
-                        background: isScreenSharing ? '#ff9800' : '#2196f3',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                    }}
-                >
-                    {isScreenSharing ? '🖥️ Stop Sharing' : '🖥️ Share Screen'}
-                </button>
-            </div>
-
-            {connectionErrors.length > 0 && (
-                <div className="connection-errors" style={{
-                    position: 'absolute',
-                    bottom: '100px',
-                    left: '10px',
-                    background: 'rgba(244, 67, 54, 0.9)',
-                    color: 'white',
-                    padding: '10px',
-                    borderRadius: '5px',
-                    fontSize: '12px',
-                    maxWidth: '300px'
-                }}>
-                    <div><strong>⚠️ Connection Issues:</strong></div>
-                    {connectionErrors.slice(-3).map((error, index) => (
-                        <div key={index}>
-                            {error.peerId.slice(0, 8)}: {error.error}
+                    {/* Remote Peers */}
+                    {peers.map(peer => (
+                        <div key={peer.peerId} className="relative aspect-video bg-black rounded-xl overflow-hidden shadow-lg border border-white/5 group">
+                            <video
+                                data-peer-id={peer.peerId}
+                                autoPlay
+                                playsInline
+                                ref={video => {
+                                    if (video && peer.stream) {
+                                        video.srcObject = peer.stream;
+                                    }
+                                }}
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-100 transition-opacity">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/10 backdrop-blur-sm border border-white/5">
+                                            <span className="text-xs font-medium text-white">{peer.metadata?.userName || 'Participant'}</span>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {!peer.metadata?.audioEnabled && <div className="p-1 rounded bg-red-500/80 text-white"><MicOff className="w-3 h-3" /></div>}
+                                            {!peer.metadata?.videoEnabled && <div className="p-1 rounded bg-red-500/80 text-white"><VideoOff className="w-3 h-3" /></div>}
+                                        </div>
+                                    </div>
+                                    <div className={clsx(
+                                        "w-2 h-2 rounded-full",
+                                        iceConnectionStates.get(peer.peerId) === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' :
+                                            iceConnectionStates.get(peer.peerId) === 'checking' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'
+                                    )} title={`Connection: ${iceConnectionStates.get(peer.peerId)}`} />
+                                </div>
+                            </div>
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Controls Bar */}
+            <div className="p-4 bg-surface border-t border-white/5 backdrop-blur-md">
+                <div className="flex items-center justify-center gap-4">
                     <button
-                        onClick={() => setConnectionErrors([])}
-                        style={{
-                            marginTop: '5px',
-                            padding: '2px 5px',
-                            fontSize: '10px',
-                            background: 'transparent',
-                            border: '1px solid white',
-                            color: 'white',
-                            borderRadius: '3px',
-                            cursor: 'pointer'
-                        }}
+                        onClick={toggleMute}
+                        className={clsx(
+                            "p-4 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg",
+                            isMuted
+                                ? "bg-red-500 hover:bg-red-600 text-white ring-4 ring-red-500/20"
+                                : "bg-surface-light hover:bg-white/10 text-white border border-white/10"
+                        )}
+                        title={isMuted ? "Unmute" : "Mute"}
                     >
-                        Clear
+                        {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                     </button>
+
+                    <button
+                        onClick={toggleVideo}
+                        className={clsx(
+                            "p-4 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg",
+                            !isVideoEnabled
+                                ? "bg-red-500 hover:bg-red-600 text-white ring-4 ring-red-500/20"
+                                : "bg-surface-light hover:bg-white/10 text-white border border-white/10"
+                        )}
+                        title={isVideoEnabled ? "Turn Video Off" : "Turn Video On"}
+                    >
+                        {!isVideoEnabled ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+                    </button>
+
+                    <button
+                        onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+                        className={clsx(
+                            "p-4 rounded-full transition-all duration-200 flex items-center justify-center shadow-lg",
+                            isScreenSharing
+                                ? "bg-blue-500 hover:bg-blue-600 text-white ring-4 ring-blue-500/20"
+                                : "bg-surface-light hover:bg-white/10 text-white border border-white/10"
+                        )}
+                        title={isScreenSharing ? "Stop Sharing" : "Share Screen"}
+                    >
+                        {isScreenSharing ? <MonitorOff className="w-6 h-6" /> : <Monitor className="w-6 h-6" />}
+                    </button>
+                </div>
+            </div>
+
+            {/* Error Notifications */}
+            {connectionErrors.length > 0 && (
+                <div className="absolute bottom-24 left-4 max-w-sm space-y-2 z-50">
+                    {connectionErrors.slice(-3).map((err, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 bg-red-500/90 backdrop-blur-md text-white rounded-lg shadow-xl border border-red-400/50 animate-slide-in">
+                            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium">Connection Error</p>
+                                <p className="text-xs opacity-90 truncate">{err.error}</p>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </div>

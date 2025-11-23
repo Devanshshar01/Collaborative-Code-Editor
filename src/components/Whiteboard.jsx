@@ -4,7 +4,8 @@ import '@tldraw/tldraw/tldraw.css';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import TLDrawYjsProvider from '../utils/tldraw-yjs-provider';
-import { enhancedShapeUtils, WhiteboardUtils } from '../utils/tldraw-shapes.jsx';
+import { Image, FileText, Save, Trash2, Users, Activity, Loader2, AlertCircle } from 'lucide-react';
+import clsx from 'clsx';
 
 const Whiteboard = ({
     roomId,
@@ -35,10 +36,8 @@ const Whiteboard = ({
     useEffect(() => {
         if (!roomId || !userId) return;
 
-        // Create TLDraw store
-        const tlStore = createTLStore({
-            shapeUtils: enhancedShapeUtils
-        });
+        // Create TLDraw store with default shapes
+        const tlStore = createTLStore();
 
         setStore(tlStore);
 
@@ -260,180 +259,95 @@ const Whiteboard = ({
     // Render loading state
     if (!store) {
         return (
-            <div className="whiteboard-loading" style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                background: '#fafafa',
-                color: '#666',
-                fontSize: '16px'
-            }}>
-                <div>
-                    🎨 Initializing whiteboard...
-                </div>
+            <div className="flex flex-col items-center justify-center h-full bg-surface-light text-text-secondary">
+                <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
+                <div className="text-sm font-medium">Initializing whiteboard...</div>
             </div>
         );
     }
 
     return (
-        <div className="whiteboard-container" style={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            background: '#fafafa'
-        }}>
+        <div className="flex flex-col h-full bg-surface-light relative">
             {/* Toolbar */}
-            <div className="whiteboard-toolbar" style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '8px 16px',
-                background: '#ffffff',
-                borderBottom: '1px solid #e1e1e1',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
+            <div className="flex items-center justify-between px-4 py-2 bg-surface border-b border-white/5 shadow-sm z-10">
                 {/* Status indicators */}
-                <div className="toolbar-left" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px'
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '14px'
-                    }}>
-                        <div style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: isConnected ? (isSynced ? '#4caf50' : '#ff9800') : '#f44336'
-                        }} />
-                        <span style={{ color: '#666' }}>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/5 border border-white/5">
+                        <div className={clsx(
+                            "w-2 h-2 rounded-full animate-pulse",
+                            isConnected ? (isSynced ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-yellow-500") : "bg-red-500"
+                        )} />
+                        <span className="text-xs font-medium text-text-secondary">
                             {isConnected ? (isSynced ? 'Synced' : 'Syncing...') : 'Offline'}
                         </span>
                     </div>
 
-                    <div style={{ fontSize: '14px', color: '#666' }}>
-                        📊 {stats.shapes} shapes • 👥 {stats.users + 1} users
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Activity className="w-3.5 h-3.5" />
+                        <span>{stats.shapes} shapes</span>
                     </div>
 
                     {/* Online users */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                    }}>
-                        {onlineUsers.slice(0, 5).map((user, index) => (
-                            <div
-                                key={user.id}
-                                title={user.name}
-                                style={{
-                                    width: '24px',
-                                    height: '24px',
-                                    borderRadius: '50%',
-                                    backgroundColor: user.color,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '11px',
-                                    color: '#fff',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                {user.name[0].toUpperCase()}
-                            </div>
-                        ))}
-                        {onlineUsers.length > 5 && (
-                            <div style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '50%',
-                                backgroundColor: '#ccc',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '11px',
-                                color: '#666'
-                            }}>
-                                +{onlineUsers.length - 5}
-                            </div>
-                        )}
+                    <div className="flex items-center gap-1">
+                        <div className="flex -space-x-2 mr-2">
+                            {onlineUsers.slice(0, 5).map((user) => (
+                                <div
+                                    key={user.id}
+                                    title={user.name}
+                                    className="w-6 h-6 rounded-full border-2 border-surface flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                                    style={{ backgroundColor: user.color }}
+                                >
+                                    {user.name[0].toUpperCase()}
+                                </div>
+                            ))}
+                            {onlineUsers.length > 5 && (
+                                <div className="w-6 h-6 rounded-full border-2 border-surface bg-surface-light flex items-center justify-center text-[10px] font-bold text-text-secondary">
+                                    +{onlineUsers.length - 5}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-text-secondary bg-white/5 px-2 py-1 rounded-md">
+                            <Users className="w-3.5 h-3.5" />
+                            <span>{stats.users + 1}</span>
+                        </div>
                     </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="toolbar-right" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
+                <div className="flex items-center gap-2">
                     <button
                         onClick={handleExportPNG}
                         disabled={isExporting}
-                        style={{
-                            padding: '6px 12px',
-                            background: '#2196f3',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: isExporting ? 'not-allowed' : 'pointer',
-                            fontSize: '12px',
-                            opacity: isExporting ? 0.6 : 1
-                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 transition-all border border-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isExporting ? '⏳' : '📷'} PNG
+                        {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Image className="w-3.5 h-3.5" />}
+                        <span className="text-xs font-medium">PNG</span>
                     </button>
 
                     <button
                         onClick={handleExportPDF}
                         disabled={isExporting}
-                        style={{
-                            padding: '6px 12px',
-                            background: '#ff5722',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: isExporting ? 'not-allowed' : 'pointer',
-                            fontSize: '12px',
-                            opacity: isExporting ? 0.6 : 1
-                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300 transition-all border border-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isExporting ? '⏳' : '📄'} PDF
+                        {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                        <span className="text-xs font-medium">PDF</span>
                     </button>
 
                     <button
                         onClick={handleExportData}
-                        style={{
-                            padding: '6px 12px',
-                            background: '#4caf50',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '12px'
-                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-all border border-green-500/20"
                     >
-                        💾 Data
+                        <Save className="w-3.5 h-3.5" />
+                        <span className="text-xs font-medium">Data</span>
                     </button>
 
                     {isAdmin && (
                         <button
                             onClick={handleClearWhiteboard}
-                            style={{
-                                padding: '6px 12px',
-                                background: '#f44336',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                marginLeft: '8px'
-                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20 ml-2"
                         >
-                            🧹 Clear
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="text-xs font-medium">Clear</span>
                         </button>
                     )}
                 </div>
@@ -442,11 +356,7 @@ const Whiteboard = ({
             {/* TLDraw Editor */}
             <div
                 ref={editorRef}
-                className="whiteboard-editor"
-                style={{
-                    flex: 1,
-                    position: 'relative'
-                }}
+                className="flex-1 relative"
             >
                 <Tldraw
                     store={store}
@@ -458,45 +368,20 @@ const Whiteboard = ({
 
             {/* Connection status overlay */}
             {!isConnected && (
-                <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'rgba(244, 67, 54, 0.9)',
-                    color: 'white',
-                    padding: '16px 24px',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    zIndex: 1000,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                }}>
-                    🔌 Reconnecting to whiteboard...
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/90 backdrop-blur-md text-white px-6 py-4 rounded-xl shadow-2xl border border-red-400/50 flex items-center gap-3 z-50 animate-pulse">
+                    <AlertCircle className="w-6 h-6" />
+                    <span className="font-medium">Reconnecting to whiteboard...</span>
                 </div>
             )}
 
             {/* Export progress overlay */}
             {isExporting && (
-                <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    zIndex: 2000
-                }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div>📸 Exporting whiteboard...</div>
-                        <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.8 }}>
-                            Please wait while we generate your file
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-surface p-6 rounded-xl border border-white/10 shadow-2xl flex flex-col items-center gap-4">
+                        <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                        <div className="text-center">
+                            <div className="text-lg font-medium text-white">Exporting whiteboard...</div>
+                            <div className="text-sm text-text-secondary mt-1">Please wait while we generate your file</div>
                         </div>
                     </div>
                 </div>
