@@ -11,8 +11,11 @@ import {
     WifiOff,
     Monitor,
     X,
-    Check
+    Check,
+    Maximize2,
+    Minimize2
 } from 'lucide-react';
+import LandingPage from './components/LandingPage';
 import CodeEditor from './components/CodeEditor';
 import VideoCall from './components/VideoCall';
 import Whiteboard from './components/Whiteboard';
@@ -22,6 +25,7 @@ import './App.css';
 import './index.css';
 
 function App() {
+    const [showLanding, setShowLanding] = useState(true);
     const [roomId] = useState(() => {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('room') || `room-${Math.random().toString(36).substr(2, 9)}`;
@@ -48,7 +52,7 @@ function App() {
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [showSettings, setShowSettings] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
-    const [activeView, setActiveView] = useState('editor'); // 'editor', 'whiteboard', 'split'
+    const [activeView, setActiveView] = useState('editor'); // 'editor', 'whiteboard', 'split', 'maximize-video'
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
 
@@ -102,6 +106,10 @@ function App() {
         }
     };
 
+    if (showLanding) {
+        return <LandingPage onEnter={() => setShowLanding(false)} />;
+    }
+
     return (
         <div className="h-screen w-full flex flex-col bg-background text-text-primary overflow-hidden font-sans">
             {/* Header */}
@@ -134,7 +142,7 @@ function App() {
                     <div className="flex bg-surface-light/30 p-1 rounded-lg border border-white/5">
                         <button
                             onClick={() => setActiveView('editor')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'editor'
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'editor' || activeView === 'maximize-video'
                                 ? 'bg-primary text-white shadow-lg shadow-primary/20'
                                 : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
@@ -291,7 +299,7 @@ function App() {
                 <div className="flex-1 flex relative bg-background-secondary/50">
                     {/* Code Editor Area */}
                     <div
-                        className={`flex-1 flex flex-col transition-all duration-300 ${activeView === 'whiteboard' ? 'hidden' : ''
+                        className={`flex-1 flex flex-col transition-all duration-300 ${activeView === 'whiteboard' || activeView === 'maximize-video' ? 'hidden' : ''
                             } ${activeView === 'split' ? 'w-1/2 border-r border-white/5' : 'w-full'}`}
                     >
                         <CodeEditor
@@ -308,7 +316,7 @@ function App() {
 
                     {/* Whiteboard Area */}
                     <div
-                        className={`flex-1 flex flex-col transition-all duration-300 ${activeView === 'editor' ? 'hidden' : ''
+                        className={`flex-1 flex flex-col transition-all duration-300 ${activeView === 'editor' || activeView === 'maximize-video' ? 'hidden' : ''
                             } ${activeView === 'split' ? 'w-1/2' : 'w-full'}`}
                     >
                         <Whiteboard
@@ -321,20 +329,35 @@ function App() {
                         />
                     </div>
 
-                    {/* Floating Video Call */}
+                    {/* Floating/Maximized Video Call */}
                     {showVideo && (
-                        <div className={`absolute bottom-6 right-6 w-80 bg-surface border border-white/10 rounded-xl shadow-2xl overflow-hidden z-40 animate-slide-up flex flex-col ${activeView === 'split' ? 'right-6' : 'right-6'
+                        <div className={`transition-all duration-300 ease-in-out flex flex-col bg-surface border border-white/10 rounded-xl shadow-2xl overflow-hidden ${activeView === 'maximize-video'
+                            ? 'fixed inset-4 z-50'
+                            : 'fixed bottom-6 right-6 w-[580px] h-[420px] z-40'
                             }`}>
-                            <div className="bg-surface-light/50 px-4 py-2 flex items-center justify-between border-b border-white/5">
+                            <div className="bg-surface-light/50 px-4 py-2 flex items-center justify-between border-b border-white/5 shrink-0">
                                 <span className="text-xs font-medium text-text-secondary flex items-center gap-2">
                                     <Video className="w-3 h-3" />
                                     Video Call
                                 </span>
-                                <button onClick={() => setShowVideo(false)} className="text-text-secondary hover:text-white">
-                                    <X className="w-3 h-3" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setActiveView(activeView === 'maximize-video' ? 'editor' : 'maximize-video')}
+                                        className="text-text-secondary hover:text-white transition-colors p-1"
+                                        title={activeView === 'maximize-video' ? "Minimize" : "Maximize"}
+                                    >
+                                        {activeView === 'maximize-video' ? (
+                                            <Minimize2 className="w-3 h-3" />
+                                        ) : (
+                                            <Maximize2 className="w-3 h-3" />
+                                        )}
+                                    </button>
+                                    <button onClick={() => setShowVideo(false)} className="text-text-secondary hover:text-white transition-colors">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
                             </div>
-                            <div className="h-48 bg-black/50">
+                            <div className="flex-1 bg-black/50 relative overflow-hidden">
                                 <VideoCall
                                     roomId={roomId}
                                     userId={userId}

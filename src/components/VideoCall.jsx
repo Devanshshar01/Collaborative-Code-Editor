@@ -614,7 +614,8 @@ const VideoCall = ({
 
             socket.disconnect();
         };
-    }, [cleanupAllPeers, createPeer, handleIncomingSignal, handleMediaError, log, logError, onError, roomId, serverUrl, stopScreenShare, stopStreamTracks, userId, userName]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [roomId, serverUrl, userId, userName]);
 
     // Debug panel component
     const DebugPanel = () => {

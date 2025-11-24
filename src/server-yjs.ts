@@ -1,9 +1,9 @@
 import express from 'express';
 import http from 'http';
 import dotenv from 'dotenv';
-import {initializeSocket} from './core/socket';
+import { initializeSocket } from './core/socket';
 import YjsWebSocketServer from './core/yjs-websocket-server';
-import {SERVER_PORT} from './config';
+import { SERVER_PORT } from './config';
 
 // Load environment variables
 dotenv.config();
@@ -39,7 +39,7 @@ app.get('/api/rooms/:roomId/info', async (req, res) => {
             message: 'Document info endpoint'
         });
     } catch (error) {
-        res.status(500).json({error: 'Failed to get document info'});
+        res.status(500).json({ error: 'Failed to get document info' });
     }
 });
 
