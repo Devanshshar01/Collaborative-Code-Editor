@@ -245,8 +245,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('editor')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'editor' || activeView === 'maximize-video'
-                                    ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <Code2 className="w-3.5 h-3.5" />
@@ -255,8 +255,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('whiteboard')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'whiteboard'
-                                    ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <PenTool className="w-3.5 h-3.5" />
@@ -265,8 +265,8 @@ function App() {
                         <button
                             onClick={() => setActiveView('split')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'split'
-                                    ? 'bg-accent-teal text-white shadow-lg shadow-accent-teal/20'
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                                ? 'bg-accent-teal text-white shadow-lg shadow-accent-teal/20'
+                                : 'text-text-secondary hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <Split className="w-3.5 h-3.5" />
@@ -296,8 +296,8 @@ function App() {
                     <button
                         onClick={() => setShowTerminal(prev => !prev)}
                         className={`p-2 rounded-lg transition-all border ${showTerminal
-                                ? 'bg-green-600/20 border-green-500/30 text-green-400'
-                                : 'bg-surface-light/30 border-white/10 text-text-secondary hover:text-white hover:bg-surface-light/50'
+                            ? 'bg-green-600/20 border-green-500/30 text-green-400'
+                            : 'bg-surface-light/30 border-white/10 text-text-secondary hover:text-white hover:bg-surface-light/50'
                             }`}
                         title="Terminal (Ctrl+`)"
                     >
@@ -345,8 +345,8 @@ function App() {
                     <button
                         onClick={() => setShowVideo(prev => !prev)}
                         className={`p-2 rounded-lg transition-all border ${showVideo
-                                ? 'bg-primary/20 border-primary/50 text-primary'
-                                : 'bg-surface-light/30 border-transparent text-text-secondary hover:text-white hover:bg-surface-light/50'
+                            ? 'bg-primary/20 border-primary/50 text-primary'
+                            : 'bg-surface-light/30 border-transparent text-text-secondary hover:text-white hover:bg-surface-light/50'
                             }`}
                         title="Toggle Video"
                     >
@@ -478,60 +478,47 @@ function App() {
                                 onUsersChange={handleUserListChange}
                             />
                         </div>
-                    </div>
 
-                    {/* Terminal Panel */}
-                    {showTerminal && (
-                        <div className={`${terminalMaximized ? 'absolute inset-0 z-40' : 'h-1/3 border-t border-white/5'}`}>
-                            <Terminal
-                                isOpen={showTerminal}
-                                onClose={() => setShowTerminal(false)}
-                                isMaximized={terminalMaximized}
-                                onToggleMaximize={() => setTerminalMaximized(!terminalMaximized)}
-                            />
-                        </div>
-                    )}
-
-                    {/* Floating/Maximized Video Call */}
-                    {showVideo && (
-                        <div className={`transition-all duration-300 ease-in-out flex flex-col bg-surface border border-white/10 rounded-xl shadow-2xl overflow-hidden ${activeView === 'maximize-video'
+                        {showVideo && (
+                            <div className={`transition-all duration-300 shadow-2xl rounded-xl overflow-hidden border border-white/10 bg-surface ${activeView === 'maximize-video'
                                 ? 'fixed inset-4 z-50'
                                 : 'fixed bottom-6 right-6 w-[580px] h-[420px] z-40'
-                            }`}>
-                            <div className="bg-surface-light/50 px-4 py-2 flex items-center justify-between border-b border-white/5 shrink-0">
-                                <span className="text-xs font-medium text-text-secondary flex items-center gap-2">
-                                    <Video className="w-3 h-3" />
-                                    Video Call
-                                </span>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setActiveView(activeView === 'maximize-video' ? 'editor' : 'maximize-video')}
-                                        className="text-text-secondary hover:text-white transition-colors p-1"
-                                        title={activeView === 'maximize-video' ? "Minimize" : "Maximize"}
-                                    >
-                                        {activeView === 'maximize-video' ? (
-                                            <Minimize2 className="w-3 h-3" />
-                                        ) : (
-                                            <Maximize2 className="w-3 h-3" />
-                                        )}
-                                    </button>
-                                    <button onClick={() => setShowVideo(false)} className="text-text-secondary hover:text-white transition-colors">
-                                        <X className="w-3 h-3" />
-                                    </button>
+                                }`}>
+                                <div className="bg-surface-light/50 px-4 py-2 flex items-center justify-between border-b border-white/5 shrink-0">
+                                    <span className="text-xs font-medium text-text-secondary flex items-center gap-2">
+                                        <Video className="w-3 h-3" />
+                                        Video Call
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setActiveView(activeView === 'maximize-video' ? 'editor' : 'maximize-video')}
+                                            className="text-text-secondary hover:text-white transition-colors p-1"
+                                            title={activeView === 'maximize-video' ? "Minimize" : "Maximize"}
+                                        >
+                                            {activeView === 'maximize-video' ? (
+                                                <Minimize2 className="w-3 h-3" />
+                                            ) : (
+                                                <Maximize2 className="w-3 h-3" />
+                                            )}
+                                        </button>
+                                        <button onClick={() => setShowVideo(false)} className="text-text-secondary hover:text-white transition-colors">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 bg-black/50 relative overflow-hidden">
+                                    <VideoCall
+                                        roomId={roomId}
+                                        userId={userId}
+                                        userName={userName}
+                                        serverUrl={process.env.REACT_APP_SOCKET_URL || 'http://localhost:4000'}
+                                        stunServers={[]}
+                                        onError={handleError}
+                                    />
                                 </div>
                             </div>
-                            <div className="flex-1 bg-black/50 relative overflow-hidden">
-                                <VideoCall
-                                    roomId={roomId}
-                                    userId={userId}
-                                    userName={userName}
-                                    serverUrl={process.env.REACT_APP_SOCKET_URL || 'http://localhost:4000'}
-                                    stunServers={[]}
-                                    onError={handleError}
-                                />
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </main>
 

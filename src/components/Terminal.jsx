@@ -2,15 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Terminal as TerminalIcon, X, Trash2, Minimize2, Maximize2, Copy, Check } from 'lucide-react';
 import clsx from 'clsx';
 
-const Terminal = ({ isOpen, onClose, isMaximized, onToggleMaximize }) => {
+const Terminal = ({ isOpen, onClose, isMaximized, onToggleMaximize, socket }) => {
     const [history, setHistory] = useState([
-        { type: 'system', content: 'Web Terminal - Type "help" for available commands' },
-        { type: 'system', content: 'Note: This is a simulated terminal. Real command execution requires backend integration.' }
+        { type: 'system', content: 'Connected to backend terminal...' }
     ]);
     const [input, setInput] = useState('');
     const [commandHistory, setCommandHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
-    const [currentPath, setCurrentPath] = useState('~/project');
+    const [currentPath, setCurrentPath] = useState('');
     const [copied, setCopied] = useState(false);
 
     const inputRef = useRef(null);
@@ -26,110 +25,42 @@ const Terminal = ({ isOpen, onClose, isMaximized, onToggleMaximize }) => {
         }
     }, [isOpen]);
 
-    const commands = {
-        help: () => ({
-            type: 'output',
-            content: `Available commands:
-  help              - Show this help message
-  clear             - Clear terminal
-  ls                - List files (simulated)
-  pwd               - Print working directory
-  echo [text]       - Print text
-  date              - Show current date/time
-  whoami            - Show current user
-  uname             - Show system info
-  history           - Show command history
-  node --version    - Show Node.js version (simulated)
-  npm --version     - Show npm version (simulated)
-  python --version  - Show Python version (simulated)
-  git status        - Show git status (simulated)
-  
-Note: This is a simulated terminal for demonstration.
-For real command execution, integrate with a backend terminal service.`
-        }),
-        clear: () => {
-            setHistory([]);
-            return null;
-        },
-        ls: () => ({
-            type: 'output',
-            content: `src/
-  components/
-  utils/
-  App.jsx
-  index.js
-package.json
-README.md
-node_modules/`
-        }),
-        pwd: () => ({
-            type: 'output',
-            content: currentPath
-        }),
-        date: () => ({
-            type: 'output',
-            content: new Date().toString()
-        }),
-        whoami: () => ({
-            type: 'output',
-            content: 'developer'
-        }),
-        uname: () => ({
-            type: 'output',
-            content: 'Web Terminal v1.0 (Browser)'
-        }),
-        history: () => ({
-            type: 'output',
-            content: commandHistory.map((cmd, i) => `  ${i + 1}  ${cmd}`).join('\n')
-        }),
-        'node --version': () => ({
-            type: 'output',
-            content: 'v20.10.0'
-        }),
-        'npm --version': () => ({
-            type: 'output',
-            content: '10.2.3'
-        }),
-        'python --version': () => ({
-            type: 'output',
-            content: 'Python 3.11.0'
-        }),
-        'git status': () => ({
-            type: 'output',
-            content: `On branch main
-Your branch is up to date with 'origin/main'.
+    useEffect(() => {
+        if (socket && isOpen) {
+            socket.emit('terminal-create');
 
-nothing to commit, working tree clean`
-        })
-    };
+            const handleOutput = (data) => {
+                // Simple ANSI code stripping for now, or use a library like ansi-to-react
+                // For this demo, we'll just display raw text or basic cleaning
+                const cleanData = data.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '');
+                setHistory(prev => [...prev, { type: 'output', content: cleanData }]);
+            };
+
+            socket.on('terminal-output', handleOutput);
+
+            return () => {
+                socket.off('terminal-output', handleOutput);
+            };
+        }
+    }, [socket, isOpen]);
 
     const handleCommand = (cmd) => {
-        const trimmedCmd = cmd.trim();
-        if (!trimmedCmd) return;
+        const trimmedCmd = cmd; // Don't trim too aggressively, spaces might matter
+        if (!trimmedCmd && trimmedCmd !== '') return;
 
         // Add to history
-        setCommandHistory(prev => [...prev, trimmedCmd]);
-        setHistory(prev => [...prev, { type: 'command', content: `${currentPath} $ ${trimmedCmd}` }]);
+        if (trimmedCmd.trim()) {
+            setCommandHistory(prev => [...prev, trimmedCmd]);
+        }
+        setHistory(prev => [...prev, { type: 'command', content: `$ ${trimmedCmd}` }]);
 
-        // Handle echo specially
-        if (trimmedCmd.startsWith('echo ')) {
-            const text = trimmedCmd.substring(5);
-            setHistory(prev => [...prev, { type: 'output', content: text }]);
+        if (trimmedCmd.trim() === 'clear') {
+            setHistory([]);
             return;
         }
 
-        // Execute command
-        const commandFn = commands[trimmedCmd];
-        if (commandFn) {
-            const result = commandFn();
-            if (result) {
-                setHistory(prev => [...prev, result]);
-            }
-        } else {
-            setHistory(prev => [...prev, {
-                type: 'error',
-                content: `Command not found: ${trimmedCmd}\nType 'help' for available commands.`
-            }]);
+        if (socket) {
+            socket.emit('terminal-input', trimmedCmd + '\n');
         }
     };
 

@@ -1,19 +1,31 @@
-import {Server, Socket} from 'socket.io';
-import {RoomManager} from './room-manager';
-import {CodeChange, JoinRoomData} from '../types';
-import {ParticipantMetadata, SIGNALING_EVENTS} from '../types/video';
+import { Server, Socket } from 'socket.io';
+import { RoomManager } from './room-manager';
+import { CodeChange, JoinRoomData } from '../types';
+import { ParticipantMetadata, SIGNALING_EVENTS } from '../types/video';
+import { TerminalService } from '../services/terminal';
 
 export function initializeSocket(server: any) {
     const io = new Server(server, {
-        cors: { // Your CORS settings here
+        cors: {
             origin: "*",
+            methods: ["GET", "POST"]
         }
     });
 
     const roomManager = new RoomManager();
+    const terminalService = new TerminalService();
 
     io.on('connection', (socket: Socket) => {
         console.log(`Socket connected: ${socket.id}`);
+
+        // Terminal Events
+        socket.on('terminal-create', () => {
+            terminalService.createSession(socket);
+        });
+
+        socket.on('terminal-input', (input: string) => {
+            terminalService.handleInput(socket.id, input);
+        });
 
         socket.on('join-room', (data: JoinRoomData) => {
             try {
@@ -44,7 +56,7 @@ export function initializeSocket(server: any) {
 
         socket.on('disconnect', () => {
             try {
-                const {room, userId, roomId} = roomManager.leaveRoom(socket.id);
+                const { room, userId, roomId } = roomManager.leaveRoom(socket.id);
                 if (room && userId && roomId) {
                     io.to(roomId).emit('user-left', room.users);
                     console.log(`User ${userId} left room ${roomId}`);
@@ -64,7 +76,7 @@ export function initializeSocket(server: any) {
             data: any
         }) => {
             try {
-                const {roomId, targetSocketId, data} = payload;
+                const { roomId, targetSocketId, data } = payload;
                 if (!roomId || !targetSocketId) {
                     return;
                 }
@@ -92,7 +104,7 @@ export function initializeSocket(server: any) {
 
         socket.on('webrtc-metadata', (payload: { roomId: string; metadata: ParticipantMetadata }) => {
             try {
-                const {roomId, metadata} = payload;
+                const { roomId, metadata } = payload;
                 const enrichedMetadata = {
                     ...metadata,
                     socketId: socket.id
@@ -181,7 +193,7 @@ export function initializeSocket(server: any) {
 
         // Heartbeat mechanism
         const heartbeatInterval = setInterval(() => {
-            socket.emit('heartbeat', {timestamp: Date.now()});
+            socket.emit('heartbeat', { timestamp: Date.now() });
         }, 30000);
 
         socket.on('heartbeat-ack', () => {

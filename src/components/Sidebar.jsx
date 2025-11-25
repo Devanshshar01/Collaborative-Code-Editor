@@ -30,36 +30,23 @@ const Sidebar = ({
     const [activeTab, setActiveTab] = useState('code');
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    const [fileTree, setFileTree] = useState({
-        name: 'Root',
-        type: 'folder',
-        isOpen: true,
-        children: [
-            {
-                name: 'src',
-                type: 'folder',
-                isOpen: true,
-                children: [
-                    { name: 'index.js', type: 'file', language: 'javascript' },
-                    { name: 'App.jsx', type: 'file', language: 'javascript' },
-                    { name: 'styles.css', type: 'file', language: 'css' }
-                ]
-            },
-            {
-                name: 'components',
-                type: 'folder',
-                isOpen: false,
-                children: [
-                    { name: 'Header.jsx', type: 'file', language: 'javascript' },
-                    { name: 'Footer.jsx', type: 'file', language: 'javascript' }
-                ]
-            },
-            { name: 'README.md', type: 'file', language: 'markdown' },
-            { name: 'package.json', type: 'file', language: 'json' }
-        ]
-    });
+    const [fileTree, setFileTree] = useState([]);
 
     const chatEndRef = useRef(null);
+
+    // Fetch files on mount
+    useEffect(() => {
+        const fetchFiles = async () => {
+            try {
+                const res = await fetch('http://localhost:4000/api/files');
+                const data = await res.json();
+                setFileTree(data);
+            } catch (error) {
+                console.error('Failed to fetch files:', error);
+            }
+        };
+        fetchFiles();
+    }, []);
 
     // Auto-scroll chat to bottom
     useEffect(() => {
@@ -115,77 +102,84 @@ const Sidebar = ({
     };
 
     const toggleFolder = (path) => {
-        const updateTree = (node, currentPath = []) => {
-            const nodePath = [...currentPath, node.name];
-            const pathString = nodePath.join('/');
-
-            if (pathString === path) {
-                return { ...node, isOpen: !node.isOpen };
-            }
-
-            if (node.children) {
-                return {
-                    ...node,
-                    children: node.children.map(child => updateTree(child, nodePath))
-                };
-            }
-
-            return node;
+        const updateTree = (nodes) => {
+            return nodes.map(node => {
+                const nodePath = node.path || node.name; // Fallback if path not set
+                if (nodePath === path) {
+                    return { ...node, isOpen: !node.isOpen };
+                }
+                if (node.children) {
+                    return { ...node, children: updateTree(node.children) };
+                }
+                return node;
+            });
         };
 
         setFileTree(prev => updateTree(prev));
     };
 
-    const handleFileClick = (file, path) => {
+    const handleFileClick = async (file, path) => {
         if (file.type === 'file') {
-            onFileSelect?.(file, path);
+            try {
+                const res = await fetch(`http://localhost:4000/api/files/content?path=${encodeURIComponent(path)}`);
+                const { content } = await res.json();
+                onFileSelect?.({ ...file, content, path });
+            } catch (error) {
+                console.error('Failed to load file content:', error);
+            }
         }
     };
 
-    const renderFileTree = (node, path = []) => {
-        const currentPath = [...path, node.name];
-        const pathString = currentPath.join('/');
-        const isFolder = node.type === 'folder';
+    const renderFileTree = (nodes, parentPath = '') => {
+        if (!nodes) return null;
 
-        return (
-            <div key={pathString} className="select-none">
-                <div
-                    className={clsx(
-                        'flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/5 rounded text-sm transition-colors',
-                        {
-                            'font-medium': isFolder,
-                            'text-text-primary': isFolder,
-                            'text-text-secondary': !isFolder
-                        }
-                    )}
-                    onClick={() => isFolder ? toggleFolder(pathString) : handleFileClick(node, pathString)}
-                    style={{ paddingLeft: `${path.length * 12 + 12}px` }}
-                >
-                    {isFolder ? (
-                        <>
-                            {node.isOpen ? (
-                                <ChevronDown className="w-4 h-4 text-text-secondary" />
-                            ) : (
-                                <ChevronRight className="w-4 h-4 text-text-secondary" />
-                            )}
-                            <Folder className="w-4 h-4 text-accent-orange" />
-                        </>
-                    ) : (
-                        <>
-                            <span className="w-4" />
-                            <File className="w-4 h-4 text-primary-light" />
-                        </>
-                    )}
-                    <span className="truncate">{node.name}</span>
-                </div>
+        // Handle single root object vs array
+        const items = Array.isArray(nodes) ? nodes : [nodes];
 
-                {isFolder && node.isOpen && node.children && (
-                    <div>
-                        {node.children.map(child => renderFileTree(child, currentPath))}
+        return items.map((node) => {
+            const currentPath = node.path || (parentPath ? `${parentPath}/${node.name}` : node.name);
+            const isFolder = node.type === 'folder';
+
+            return (
+                <div key={currentPath} className="select-none">
+                    <div
+                        className={clsx(
+                            'flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-white/5 rounded text-sm transition-colors',
+                            {
+                                'font-medium': isFolder,
+                                'text-text-primary': isFolder,
+                                'text-text-secondary': !isFolder
+                            }
+                        )}
+                        onClick={() => isFolder ? toggleFolder(currentPath) : handleFileClick(node, currentPath)}
+                        style={{ paddingLeft: `${(currentPath.split('/').length) * 12}px` }}
+                    >
+                        {isFolder ? (
+                            <>
+                                {node.isOpen ? (
+                                    <ChevronDown className="w-4 h-4 text-text-secondary" />
+                                ) : (
+                                    <ChevronRight className="w-4 h-4 text-text-secondary" />
+                                )}
+                                <Folder className="w-4 h-4 text-accent-orange" />
+                            </>
+                        ) : (
+                            <>
+                                <span className="w-4" />
+                                <File className="w-4 h-4 text-primary-light" />
+                            </>
+                        )}
+                        <span className="truncate">{node.name}</span>
                     </div>
-                )}
-            </div>
-        );
+
+                    {isFolder && node.isOpen && node.children && (
+                        <div>
+                            {renderFileTree(node.children, currentPath)}
+                        </div>
+                    )}
+                </div>
+            );
+        });
     };
 
     if (isCollapsed) {

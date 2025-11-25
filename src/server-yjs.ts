@@ -1,22 +1,37 @@
 import express from 'express';
 import http from 'http';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import { initializeSocket } from './core/socket';
 import YjsWebSocketServer from './core/yjs-websocket-server';
 import { SERVER_PORT } from './config';
+import { FileService } from './services/files';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const fileService = new FileService();
 
-// Initialize Socket.IO for room management
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Initialize Socket.IO for room management and terminal
 initializeSocket(server);
 
 // Initialize Yjs WebSocket server for CRDT synchronization
 const yjsPort = parseInt(process.env.YJS_PORT || '1234');
 const yjsServer = new YjsWebSocketServer(yjsPort);
+
+// File System Routes
+app.get('/api/files', (req, res) => fileService.listFiles(req, res));
+app.get('/api/files/content', (req, res) => fileService.readFile(req, res));
+app.post('/api/files', (req, res) => fileService.createFile(req, res));
+app.put('/api/files', (req, res) => fileService.saveFile(req, res));
+app.delete('/api/files', (req, res) => fileService.deleteFile(req, res));
+app.put('/api/files/rename', (req, res) => fileService.renameFile(req, res));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -24,7 +39,8 @@ app.get('/health', (req, res) => {
         status: 'healthy',
         services: {
             socketio: 'running',
-            yjs: 'running'
+            yjs: 'running',
+            files: 'running'
         },
         timestamp: new Date().toISOString()
     });
@@ -33,7 +49,6 @@ app.get('/health', (req, res) => {
 // Document info endpoint
 app.get('/api/rooms/:roomId/info', async (req, res) => {
     try {
-        // This endpoint could be extended to provide document metadata
         res.json({
             roomId: req.params.roomId,
             message: 'Document info endpoint'
@@ -54,6 +69,7 @@ async function startServers() {
             console.log(`Main server running on port ${SERVER_PORT}`);
             console.log(`Socket.IO available at http://localhost:${SERVER_PORT}`);
             console.log(`Yjs WebSocket server running on port ${yjsPort}`);
+            console.log(`File Service available at http://localhost:${SERVER_PORT}/api/files`);
         });
     } catch (error) {
         console.error('Failed to start servers:', error);

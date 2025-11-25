@@ -16,6 +16,12 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+/**
+ * AI Code Assistant – chat interface powered by Google Gemini.
+ * Replace `YOUR_GEMINI_API_KEY` with a valid key or set it in the environment
+ * variable `GEMINI_API_KEY`. The component works without a key by showing a fallback
+ * response.
+ */
 const AIAssistant = ({ isOpen, onClose, currentCode, onInsertCode, language }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -34,10 +40,12 @@ const AIAssistant = ({ isOpen, onClose, currentCode, onInsertCode, language }) =
         { id: 'test', label: 'Generate Tests', icon: Lightbulb, prompt: 'Generate unit tests for this code:' }
     ];
 
+    // Auto‑scroll to latest message
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // Focus input when panel opens
     useEffect(() => {
         if (isOpen && !isMinimized && inputRef.current) {
             inputRef.current.focus();
@@ -49,83 +57,52 @@ const AIAssistant = ({ isOpen, onClose, currentCode, onInsertCode, language }) =
         handleSend(prompt);
     };
 
-    const handleSend = async (customPrompt = null) => {
-        const message = customPrompt || input;
-        if (!message.trim()) return;
-
-        setInput('');
-        const userMessage = { role: 'user', content: message };
-        setMessages(prev => [...prev, userMessage]);
-        setIsLoading(true);
-
-        try {
-            // Using free Hugging Face Inference API (no API key needed for basic usage)
-            // You can replace this with OpenAI, Anthropic, or other AI services
-            const response = await fetch('https://api-inference.huggingface.co/models/codellama/CodeLlama-7b-hf', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    inputs: message,
-                    parameters: {
-                        max_new_tokens: 500,
-                        temperature: 0.7,
-                        top_p: 0.95,
-                        return_full_text: false
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('AI service temporarily unavailable');
-            }
-
-            const data = await response.json();
-            const aiResponse = Array.isArray(data) ? data[0]?.generated_text : data.generated_text;
-
-            if (aiResponse) {
-                setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
-            } else {
-                // Fallback response
-                setMessages(prev => [...prev, {
-                    role: 'assistant',
-                    content: 'I apologize, but I\'m having trouble processing your request. The AI service might be loading or temporarily unavailable. Please try:\n\n1. **Waiting a moment** - The model might be loading\n2. **Simplifying your question** - Ask specific questions about the code\n3. **Using Quick Actions** - Try the preset buttons above\n\nFor best results, ask specific questions like:\n- "What does this function do?"\n- "How can I improve this code?"\n- "Are there any bugs in this code?"'
-                }]);
-            }
-        } catch (error) {
-            console.error('AI Error:', error);
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: `**AI Service Unavailable**\n\nThe free AI service (Hugging Face) might be loading or experiencing high traffic. Here are some alternatives:\n\n**Quick Tips for ${language}:**\n${language === 'javascript' ? `
-- Use const/let instead of var
-- Add error handling with try/catch
-- Use async/await for asynchronous code
-- Consider adding JSDoc comments
-` : language === 'python' ? `
-- Follow PEP 8 style guidelines
-- Use type hints for better clarity
-- Add docstrings to functions
-- Consider using list comprehensions
-` : '- Follow language best practices\n- Add proper error handling\n- Write clear comments'}
-
-You can also:\n- Check code manually for common issues\n- Review the language documentation\n- Ask your team members for feedback`
-            }]);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleCopy = (text, index) => {
         navigator.clipboard.writeText(text);
         setCopiedIndex(index);
         setTimeout(() => setCopiedIndex(null), 2000);
     };
 
+    // Optional helper to extract fenced code blocks from a response
     const extractCode = (text) => {
-        const codeBlockRegex = /```[\w]*\n([\s\S]*?)```/g;
+        const codeBlockRegex = /```[\\w]*\n([\\s\\S]*?)```/g;
         const matches = [...text.matchAll(codeBlockRegex)];
-        return matches.map(match => match[1].trim());
+        return matches.map(m => m[1].trim());
+    };
+
+    const handleSend = async (customPrompt = null) => {
+        const message = customPrompt || input;
+        if (!message.trim()) return;
+
+        const userMessage = { role: 'user', content: message };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            const apiKey = process.env.GEMINI_API_KEY || '';
+            if (!apiKey) throw new Error('Gemini API key not set');
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: message }] }]
+                })
+            });
+
+            if (!response.ok) throw new Error('Gemini service unavailable');
+            const data = await response.json();
+            const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response from Gemini.';
+            setMessages(prev => [...prev, { role: 'assistant', content: aiText }]);
+        } catch (error) {
+            console.error('AI Error:', error);
+            // Simple fallback – echo the request so UI stays usable
+            const fallback = `Gemini unavailable. Your request was:\n\n"${message}"`;
+            setMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -133,9 +110,7 @@ You can also:\n- Check code manually for common issues\n- Review the language do
     return (
         <div className={clsx(
             "fixed bg-surface border border-white/10 rounded-xl shadow-2xl z-50 flex flex-col transition-all duration-300",
-            isMinimized
-                ? "bottom-6 right-6 w-80 h-14"
-                : "bottom-6 right-6 w-[500px] h-[600px]"
+            isMinimized ? "bottom-6 right-6 w-80 h-14" : "bottom-6 right-6 w-[500px] h-[600px]"
         )}>
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-gradient-to-r from-purple-600/10 to-blue-600/10 shrink-0">
@@ -164,6 +139,7 @@ You can also:\n- Check code manually for common issues\n- Review the language do
                 </div>
             </div>
 
+            {/* Body – hidden when minimized */}
             {!isMinimized && (
                 <>
                     {/* Quick Actions */}
@@ -232,7 +208,6 @@ You can also:\n- Check code manually for common issues\n- Review the language do
                                         <div className="whitespace-pre-wrap break-words">
                                             {msg.content.split('```').map((part, i) => {
                                                 if (i % 2 === 1) {
-                                                    // Code block
                                                     const lines = part.split('\n');
                                                     const lang = lines[0];
                                                     const code = lines.slice(1).join('\n');
@@ -265,13 +240,11 @@ You can also:\n- Check code manually for common issues\n- Review the language do
                                             >
                                                 {copiedIndex === index ? (
                                                     <>
-                                                        <Check className="w-3 h-3" />
-                                                        Copied!
+                                                        <Check className="w-3 h-3" /> Copied!
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Copy className="w-3 h-3" />
-                                                        Copy
+                                                        <Copy className="w-3 h-3" /> Copy
                                                     </>
                                                 )}
                                             </button>
