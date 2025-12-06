@@ -1,0 +1,23 @@
+# Yjs WebSocket Server Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy Yjs server
+COPY yjs-server-simple.js ./
+
+# Expose port
+EXPOSE 1234
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:1234 || exit 1
+
+# Start Yjs server
+CMD ["node", "yjs-server-simple.js"]

@@ -1,0 +1,25 @@
+# Docker ignore file
+node_modules
+npm-debug.log
+dist
+coverage
+test-results
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+*.md
+!README.md
+.vscode
+.idea
+*.log
+*.tmp
+*.temp
+.cache
+.parcel-cache
+.DS_Store
+Thumbs.db
+docker-data
+mongodb-data
+redis-data

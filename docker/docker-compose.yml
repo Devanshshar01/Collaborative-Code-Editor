@@ -1,50 +1,269 @@
 version: '3.8'
 
 services:
+  # ===========================================
+  # INFRASTRUCTURE SERVICES
+  # ===========================================
+  
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: collab-editor-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+      MONGO_INITDB_DATABASE: collaborative_editor
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - collab-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: collab-editor-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_password}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - collab-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # APPLICATION SERVICES
+  # ===========================================
+  
+  # Backend API Server
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: collab-editor-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      MONGODB_URI: mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017/collaborative_editor?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_password}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "4000:4000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - collab-network
+    volumes:
+      - ../src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Vite Dev Server (for development)
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: collab-editor-frontend
+    restart: unless-stopped
+    environment:
+      VITE_WEBSOCKET_URL: http://localhost:4000
+      VITE_YJS_URL: ws://localhost:1234
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - collab-network
+    volumes:
+      - ../src:/app/src:ro
+      - ../index.html:/app/index.html:ro
+
+  # Yjs WebSocket Server
+  yjs-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.yjs
+    container_name: collab-editor-yjs
+    restart: unless-stopped
+    environment:
+      PORT: 1234
+    ports:
+      - "1234:1234"
+    networks:
+      - collab-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1234"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================
+  # CODE EXECUTION SERVICES
+  # ===========================================
+  
   # Python executor
   python-executor:
     build:
       context: ./python
       dockerfile: Dockerfile
-    image: code-executor-python
-    container_name: code-executor-python-builder
+    image: code-executor-python:latest
+    container_name: code-executor-python
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
 
-  # Node.js executor (JS, TS, HTML, CSS)
+  # Node.js executor (JS, TS)
   node-executor:
     build:
       context: ./node
       dockerfile: Dockerfile
-    image: code-executor-node
-    container_name: code-executor-node-builder
+    image: code-executor-node:latest
+    container_name: code-executor-node
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
 
   # Java executor
   java-executor:
     build:
       context: ./java
       dockerfile: Dockerfile
-    image: code-executor-java
-    container_name: code-executor-java-builder
+    image: code-executor-java:latest
+    container_name: code-executor-java
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=200M,mode=1777
 
   # C++ executor
   cpp-executor:
     build:
       context: ./cpp
       dockerfile: Dockerfile
-    image: code-executor-cpp
-    container_name: code-executor-cpp-builder
+    image: code-executor-cpp:latest
+    container_name: code-executor-cpp
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
 
   # C executor
   c-executor:
     build:
       context: ./c
       dockerfile: Dockerfile
-    image: code-executor-c
-    container_name: code-executor-c-builder
+    image: code-executor-c:latest
+    container_name: code-executor-c
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
 
   # Go executor
   go-executor:
     build:
       context: ./go
       dockerfile: Dockerfile
-    image: code-executor-go
-    container_name: code-executor-go-builder
+    image: code-executor-go:latest
+    container_name: code-executor-go
+    restart: unless-stopped
+    networks:
+      - collab-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+
+# ===========================================
+# VOLUMES
+# ===========================================
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ===========================================
+# NETWORKS
+# ===========================================
+networks:
+  collab-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

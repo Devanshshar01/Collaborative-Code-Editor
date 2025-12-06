@@ -12,9 +12,14 @@ import {
     ChevronRight,
     ChevronDown,
     File,
-    Folder
+    Folder,
+    Search,
+    Plus,
+    RefreshCw
 } from 'lucide-react';
 import clsx from 'clsx';
+import FileExplorer from './FileExplorer';
+import { useWorkspaceStore } from '../stores/workspaceStore';
 
 const Sidebar = ({
     roomId,
@@ -257,14 +262,60 @@ const Sidebar = ({
 
             {/* Content Area */}
             <div className="flex-1 overflow-hidden flex flex-col">
-                {/* File Tree Section */}
-                <div className="border-b border-white/5">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-surface-light/30">
-                        <FolderTree className="w-3.5 h-3.5 text-text-secondary" />
-                        <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Files</h3>
+                {/* File Explorer Section - Enhanced VS Code style */}
+                <div className="flex-1 min-h-0 border-b border-white/5 flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-2 bg-surface-light/30">
+                        <div className="flex items-center gap-2">
+                            <FolderTree className="w-3.5 h-3.5 text-text-secondary" />
+                            <h3 className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Explorer</h3>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <button
+                                className="p-1 hover:bg-white/10 rounded transition-colors text-text-secondary hover:text-white"
+                                title="New File"
+                            >
+                                <Plus className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    // Refresh file tree
+                                    const fetchFiles = async () => {
+                                        try {
+                                            const res = await fetch('http://localhost:4000/api/files');
+                                            const data = await res.json();
+                                            setFileTree(data);
+                                        } catch (error) {
+                                            console.error('Failed to fetch files:', error);
+                                        }
+                                    };
+                                    fetchFiles();
+                                }}
+                                className="p-1 hover:bg-white/10 rounded transition-colors text-text-secondary hover:text-white"
+                                title="Refresh"
+                            >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                     </div>
-                    <div className="max-h-64 overflow-y-auto scrollbar-thin py-2">
-                        {renderFileTree(fileTree)}
+                    <div className="flex-1 overflow-y-auto scrollbar-thin">
+                        <FileExplorer
+                            files={fileTree}
+                            onFileSelect={(file) => {
+                                handleFileClick(file, file.path);
+                            }}
+                            onCreateFile={async (parentPath, name) => {
+                                console.log('Create file:', parentPath, name);
+                            }}
+                            onCreateFolder={async (parentPath, name) => {
+                                console.log('Create folder:', parentPath, name);
+                            }}
+                            onRename={async (oldPath, newPath) => {
+                                console.log('Rename:', oldPath, newPath);
+                            }}
+                            onDelete={async (path) => {
+                                console.log('Delete:', path);
+                            }}
+                        />
                     </div>
                 </div>
 

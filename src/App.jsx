@@ -19,21 +19,28 @@ import {
     Palette,
     Sparkles,
     Layout,
-    Zap
+    Zap,
+    Search
 } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import CodeEditor from './components/CodeEditor';
 import VideoCall from './components/VideoCall';
-import Whiteboard from './components/Whiteboard';
+import FigmaCanvas from './components/FigmaCanvas';
 import Sidebar from './components/Sidebar';
 import CommandPalette from './components/CommandPalette';
 import AIAssistant from './components/AIAssistant';
 import Terminal from './components/Terminal';
 import ThemeSelector from './components/ThemeSelector';
 import ProjectTemplates from './components/ProjectTemplates';
+import QuickOpen from './components/QuickOpen';
+import GlobalSearch from './components/GlobalSearch';
+import Breadcrumbs from './components/Breadcrumbs';
+import MenuBar from './components/MenuBar';
 import { useSocket } from './hooks/useSocket';
+import { useWorkspaceStore } from './stores/workspaceStore';
 import './App.css';
 import './index.css';
+import './components/FileExplorer.css';
 
 function App() {
     const [showLanding, setShowLanding] = useState(true);
@@ -75,18 +82,39 @@ function App() {
     const [terminalMaximized, setTerminalMaximized] = useState(false);
     const [showThemeSelector, setShowThemeSelector] = useState(false);
     const [showTemplates, setShowTemplates] = useState(false);
+    const [showQuickOpen, setShowQuickOpen] = useState(false);
+    const [showGlobalSearch, setShowGlobalSearch] = useState(false);
     const [currentTheme, setCurrentTheme] = useState('vscode-dark');
     const [currentCode, setCurrentCode] = useState('');
+
+    // Workspace store
+    const { activeFile, setActiveFile } = useWorkspaceStore();
 
     const { isConnected, users, joinRoom, sendCodeChange, socket } = useSocket();
 
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e) => {
-            // Command Palette: Ctrl/Cmd + K or Ctrl/Cmd + P
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'p')) {
+            // Quick Open: Ctrl/Cmd + P
+            if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+                e.preventDefault();
+                setShowQuickOpen(true);
+            }
+
+            // Command Palette: Ctrl/Cmd + Shift + P or Ctrl/Cmd + K
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
                 e.preventDefault();
                 setShowCommandPalette(true);
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                setShowCommandPalette(true);
+            }
+
+            // Global Search: Ctrl/Cmd + Shift + F
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+                e.preventDefault();
+                setShowGlobalSearch(true);
             }
 
             // AI Assistant: Ctrl/Cmd + Shift + A
@@ -99,6 +127,12 @@ function App() {
             if ((e.ctrlKey || e.metaKey) && e.key === '`') {
                 e.preventDefault();
                 setShowTerminal(prev => !prev);
+            }
+
+            // Settings: Ctrl/Cmd + ,
+            if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                e.preventDefault();
+                setShowSettings(true);
             }
         };
 
@@ -159,18 +193,327 @@ function App() {
         console.log('Executing command:', commandId);
 
         switch (commandId) {
+            // ============ FILE COMMANDS ============
+            case 'file.newFile':
+                // Create new untitled file
+                const newFileName = `untitled-${Date.now()}.js`;
+                setSelectedFile({ file: { name: newFileName, content: '' }, path: newFileName });
+                break;
+            case 'file.newWindow':
+                window.open(window.location.href, '_blank');
+                break;
+            case 'file.openFile':
             case 'file.upload':
-                // Trigger file upload
+                // Trigger file input click
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.multiple = true;
+                fileInput.onchange = (e) => {
+                    const files = Array.from(e.target.files);
+                    files.forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            setSelectedFile({ 
+                                file: { name: file.name, content: ev.target.result }, 
+                                path: file.name 
+                            });
+                        };
+                        reader.readAsText(file);
+                    });
+                };
+                fileInput.click();
                 break;
-            case 'file.download':
-                // Download project
+            case 'file.openFolder':
+                // Browser doesn't support folder selection easily, show message
+                alert('Folder selection: Use the file explorer sidebar to manage files');
                 break;
+            case 'file.save':
+                // Save current file (trigger download)
+                if (currentCode) {
+                    const blob = new Blob([currentCode], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = selectedFile?.file?.name || 'untitled.txt';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+                break;
+            case 'file.saveAs':
+                // Save as with dialog
+                if (currentCode) {
+                    const fileName = prompt('Enter file name:', selectedFile?.file?.name || 'untitled.txt');
+                    if (fileName) {
+                        const blob = new Blob([currentCode], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                }
+                break;
+            case 'file.saveAll':
+                // In collaborative environment, all changes are auto-saved
+                alert('All changes are automatically synced in real-time');
+                break;
+            case 'file.autoSave':
+                // Toggle auto-save (in this app, it's always on via Yjs)
+                alert('Auto-save is always enabled in collaborative mode');
+                break;
+            case 'file.share.copyLink':
+                shareRoom();
+                break;
+            case 'file.close':
+                setSelectedFile(null);
+                break;
+            case 'file.closeFolder':
+                // Reset to initial state
+                setSelectedFile(null);
+                break;
+            case 'file.preferences.settings':
+                setShowSettings(true);
+                break;
+            case 'file.preferences.keyboardShortcuts':
+                // Show keyboard shortcuts
+                alert('Keyboard Shortcuts:\n\nCtrl+P - Quick Open\nCtrl+Shift+P - Command Palette\nCtrl+Shift+F - Search in Files\nCtrl+` - Toggle Terminal\nCtrl+, - Settings\nCtrl+B - Toggle Sidebar\nF5 - Run Code\nCtrl+S - Save File');
+                break;
+            case 'file.preferences.themes':
+                setShowThemeSelector(true);
+                break;
+
+            // ============ EDIT COMMANDS ============
+            case 'edit.undo':
+                document.execCommand('undo');
+                break;
+            case 'edit.redo':
+                document.execCommand('redo');
+                break;
+            case 'edit.cut':
+                document.execCommand('cut');
+                break;
+            case 'edit.copy':
+                document.execCommand('copy');
+                break;
+            case 'edit.paste':
+                navigator.clipboard.readText().then(text => {
+                    document.execCommand('insertText', false, text);
+                }).catch(() => {
+                    alert('Paste: Use Ctrl+V in the editor');
+                });
+                break;
+            case 'edit.find':
+                // Trigger Monaco editor find (Ctrl+F)
+                const findEvent = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true });
+                document.activeElement?.dispatchEvent(findEvent);
+                break;
+            case 'edit.replace':
+                // Trigger Monaco editor replace (Ctrl+H)
+                const replaceEvent = new KeyboardEvent('keydown', { key: 'h', ctrlKey: true, bubbles: true });
+                document.activeElement?.dispatchEvent(replaceEvent);
+                break;
+            case 'edit.findInFiles':
+                setShowGlobalSearch(true);
+                break;
+            case 'edit.replaceInFiles':
+                setShowGlobalSearch(true);
+                break;
+            case 'edit.toggleLineComment':
+                // Monaco: Ctrl+/
+                const commentEvent = new KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true });
+                document.activeElement?.dispatchEvent(commentEvent);
+                break;
+            case 'edit.toggleBlockComment':
+                // Monaco: Shift+Alt+A
+                alert('Block Comment: Use Shift+Alt+A in the editor');
+                break;
+
+            // ============ SELECTION COMMANDS ============
+            case 'selection.selectAll':
+                document.execCommand('selectAll');
+                break;
+            case 'selection.copyLineUp':
+            case 'selection.copyLineDown':
+            case 'selection.moveLineUp':
+            case 'selection.moveLineDown':
+            case 'selection.expandSelection':
+            case 'selection.shrinkSelection':
+            case 'selection.addCursorAbove':
+            case 'selection.addCursorBelow':
+            case 'selection.addNextOccurrence':
+            case 'selection.selectAllOccurrences':
+                // These are Monaco editor operations
+                alert(`Use keyboard shortcut for this action in the editor`);
+                break;
+
+            // ============ VIEW COMMANDS ============
+            case 'view.commandPalette':
+                setShowCommandPalette(true);
+                break;
+            case 'view.openView':
+                setShowCommandPalette(true);
+                break;
+            case 'view.fullscreen':
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    document.documentElement.requestFullscreen();
+                }
+                break;
+            case 'view.zenMode':
+                // Hide all UI except editor
+                setSidebarCollapsed(true);
+                setShowTerminal(false);
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                }
+                break;
+            case 'view.primarySideBar':
+                setSidebarCollapsed(prev => !prev);
+                break;
+            case 'view.panel':
+                setShowTerminal(prev => !prev);
+                break;
+            case 'view.explorer':
+                setSidebarCollapsed(false);
+                break;
+            case 'view.search':
+                setShowGlobalSearch(true);
+                break;
+            case 'view.sourceControl':
+                alert('Source Control: Git integration coming soon');
+                break;
+            case 'view.run':
+                // Show run/debug panel
+                setShowTerminal(true);
+                break;
+            case 'view.extensions':
+                alert('Extensions: Feature coming soon');
+                break;
+            case 'view.problems':
+                setShowTerminal(true);
+                break;
+            case 'view.output':
+                setShowTerminal(true);
+                break;
+            case 'view.debugConsole':
+                setShowTerminal(true);
+                break;
+            case 'view.terminal':
+                setShowTerminal(prev => !prev);
+                break;
+            case 'view.wordWrap':
+                // Toggle word wrap in editor
+                alert('Word Wrap: Toggle in editor settings');
+                break;
+            case 'view.splitUp':
+            case 'view.splitDown':
+            case 'view.splitLeft':
+            case 'view.splitRight':
+                setActiveView('split');
+                break;
+            case 'view.singleColumn':
+                setActiveView('editor');
+                break;
+
+            // ============ GO COMMANDS ============
+            case 'go.goToFile':
+                setShowQuickOpen(true);
+                break;
+            case 'go.goToLine':
+                const line = prompt('Go to Line:');
+                if (line && !isNaN(line)) {
+                    // Monaco editor go to line
+                    alert(`Go to line ${line}: Use Ctrl+G in the editor`);
+                }
+                break;
+            case 'go.goToSymbol':
+            case 'go.goToSymbolInEditor':
+                setShowQuickOpen(true);
+                break;
+            case 'go.goToDefinition':
+            case 'go.goToDeclaration':
+            case 'go.goToTypeDefinition':
+            case 'go.goToImplementations':
+            case 'go.goToReferences':
+                alert('Go to Definition: Press F12 in the editor');
+                break;
+            case 'go.back':
+                // Navigation history back
+                break;
+            case 'go.forward':
+                // Navigation history forward
+                break;
+
+            // ============ RUN COMMANDS ============
+            case 'run.startDebugging':
+            case 'run.runWithoutDebugging':
             case 'code.run':
-                // Run code
+                // Run the current code
+                setShowTerminal(true);
+                // Trigger the code runner if available
+                const runButton = document.querySelector('[data-run-button]');
+                if (runButton) runButton.click();
                 break;
+            case 'run.stopDebugging':
+                // Stop running code
+                break;
+            case 'run.toggleBreakpoint':
+                alert('Breakpoints: Click in the gutter margin to toggle');
+                break;
+
+            // ============ TERMINAL COMMANDS ============
+            case 'terminal.new':
+                setShowTerminal(true);
+                break;
+            case 'terminal.split':
+                setShowTerminal(true);
+                break;
+            case 'terminal.runTask':
+            case 'terminal.runBuildTask':
+                setShowTerminal(true);
+                break;
+            case 'terminal.runActiveFile':
+                setShowTerminal(true);
+                const runBtn = document.querySelector('[data-run-button]');
+                if (runBtn) runBtn.click();
+                break;
+
+            // ============ HELP COMMANDS ============
+            case 'help.welcome':
+                setShowLanding(true);
+                break;
+            case 'help.showAllCommands':
+                setShowCommandPalette(true);
+                break;
+            case 'help.documentation':
+                window.open('https://code.visualstudio.com/docs', '_blank');
+                break;
+            case 'help.releaseNotes':
+                alert('Collaborative Code Editor v1.0\n\nFeatures:\n- Real-time collaboration\n- Multi-language support\n- AI assistant\n- Whiteboard\n- Video calls');
+                break;
+            case 'help.keyboardShortcuts':
+            case 'help.keyboardShortcutsReference':
+                handleCommand('file.preferences.keyboardShortcuts');
+                break;
+            case 'help.toggleDevTools':
+                // Open browser dev tools hint
+                alert('Developer Tools: Press F12 or Ctrl+Shift+I');
+                break;
+            case 'help.about':
+                alert('Collaborative Code Editor\n\nA real-time collaborative coding environment with:\n- 9 supported languages\n- Live collaboration via Yjs\n- AI-powered assistance\n- Integrated whiteboard\n- Video conferencing\n\nBuilt with React, Monaco Editor, and WebRTC');
+                break;
+            case 'help.reportIssue':
+                window.open('https://github.com/issues', '_blank');
+                break;
+
+            // ============ AI COMMANDS ============
             case 'code.ai':
                 setShowAIAssistant(true);
                 break;
+
+            // ============ VIEW MODES ============
             case 'view.editor':
                 setActiveView('editor');
                 break;
@@ -180,18 +523,16 @@ function App() {
             case 'view.split':
                 setActiveView('split');
                 break;
-            case 'view.terminal':
-                setShowTerminal(prev => !prev);
-                break;
+
+            // ============ THEME ============
             case 'theme.dark':
             case 'theme.light':
+            case 'view.appearance':
                 setShowThemeSelector(true);
                 break;
-            case 'settings.open':
-                setShowSettings(true);
-                break;
+
             default:
-                console.log('Unknown command:', commandId);
+                console.log('Unhandled command:', commandId);
         }
     };
 
@@ -213,158 +554,16 @@ function App() {
     }
 
     return (
-        <div className="h-screen w-full flex flex-col bg-background text-text-primary overflow-hidden font-sans">
-            {/* Header */}
-            <header className="h-14 bg-surface/50 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 z-10">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-primary /20 rounded-lg">
-                            <Code2 className="w-5 h-5 text-primary" />
-                        </div>
-                        <h1 className="font-bold text-sm tracking-wide bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                            COLLAB EDITOR PRO
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-3 px-3 py-1.5 bg-surface-light/30 rounded-full border border-white/5">
-                        <span className="text-xs text-text-secondary font-medium">Room</span>
-                        <span className="text-xs font-mono text-primary-light bg-primary/10 px-2 py-0.5 rounded">{roomId}</span>
-                        <button
-                            onClick={shareRoom}
-                            className="p-1 hover:bg-white/10 rounded-full transition-colors text-text-secondary hover:text-white"
-                            title="Copy Link"
-                        >
-                            <Share2 className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {/* View Toggles */}
-                    <div className="flex bg-surface-light/30 p-1 rounded-lg border border-white/5">
-                        <button
-                            onClick={() => setActiveView('editor')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'editor' || activeView === 'maximize-video'
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            <Code2 className="w-3.5 h-3.5" />
-                            Code
-                        </button>
-                        <button
-                            onClick={() => setActiveView('whiteboard')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'whiteboard'
-                                ? 'bg-secondary text-white shadow-lg shadow-secondary/20'
-                                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            <PenTool className="w-3.5 h-3.5" />
-                            Draw
-                        </button>
-                        <button
-                            onClick={() => setActiveView('split')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeView === 'split'
-                                ? 'bg-accent-teal text-white shadow-lg shadow-accent-teal/20'
-                                : 'text-text-secondary hover:text-white hover:bg-white/5'
-                                }`}
-                        >
-                            <Split className="w-3.5 h-3.5" />
-                            Split
-                        </button>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/10 mx-2" />
-
-                    {/* NEW FEATURE BUTTONS */}
-                    <button
-                        onClick={() => setShowCommandPalette(true)}
-                        className="p-2 rounded-lg bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 text-purple-400 hover:from-purple-600/30 hover:to-blue-600/30 transition-all"
-                        title="Command Palette (Ctrl+K)"
-                    >
-                        <Command className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowAIAssistant(true)}
-                        className="p-2 rounded-lg bg-gradient-to-r from-pink-600/20 to-purple-600/20 border border-pink-500/30 text-pink-400 hover:from-pink-600/30 hover:to-purple-600/30 transition-all"
-                        title="AI Assistant (Ctrl+Shift+A)"
-                    >
-                        <Sparkles className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowTerminal(prev => !prev)}
-                        className={`p-2 rounded-lg transition-all border ${showTerminal
-                            ? 'bg-green-600/20 border-green-500/30 text-green-400'
-                            : 'bg-surface-light/30 border-white/10 text-text-secondary hover:text-white hover:bg-surface-light/50'
-                            }`}
-                        title="Terminal (Ctrl+`)"
-                    >
-                        <TerminalIcon className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowThemeSelector(true)}
-                        className="p-2 rounded-lg bg-surface-light/30 border border-white/10 text-text-secondary hover:text-white hover:bg-surface-light/50 transition-all"
-                        title="Change Theme"
-                    >
-                        <Palette className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowTemplates(true)}
-                        className="p-2 rounded-lg bg-surface-light/30 border border-white/10 text-text-secondary hover:text-white hover:bg-surface-light/50 transition-all"
-                        title="Project Templates"
-                    >
-                        <Layout className="w-4 h-4" />
-                    </button>
-
-                    <div className="h-6 w-px bg-white/10 mx-2" />
-
-                    {/* Status Indicators */}
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-                            {syncStatus.connected ? (
-                                <Wifi className={`w-3.5 h-3.5 ${syncStatus.synced ? 'text-green-400' : 'text-amber-400'}`} />
-                            ) : (
-                                <WifiOff className="w-3.5 h-3.5 text-red-400" />
-                            )}
-                            <span className="hidden sm:inline">
-                                {syncStatus.connected ? (syncStatus.synced ? 'Connected' : 'Syncing...') : 'Offline'}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs font-medium text-text-secondary">
-                            <Users className="w-3.5 h-3.5 text-primary-light" />
-                            <span>{onlineUsers.length + 1}</span>
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <button
-                        onClick={() => setShowVideo(prev => !prev)}
-                        className={`p-2 rounded-lg transition-all border ${showVideo
-                            ? 'bg-primary/20 border-primary/50 text-primary'
-                            : 'bg-surface-light/30 border-transparent text-text-secondary hover:text-white hover:bg-surface-light/50'
-                            }`}
-                        title="Toggle Video"
-                    >
-                        <Video className="w-4 h-4" />
-                    </button>
-
-                    <button
-                        onClick={() => setShowSettings(!showSettings)}
-                        className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-lg bg-surface-light/30 border border-transparent hover:border-white/10 hover:bg-surface-light/50 transition-all"
-                    >
-                        <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-[10px] font-bold text-white">
-                            {userName.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-xs font-medium text-text-primary hidden sm:inline">{userName}</span>
-                        {isAdmin && <span className="text-[10px] text-amber-400 ml-1">👑</span>}
-                    </button>
-                </div>
-            </header>
+        <div className="h-screen w-full flex flex-col bg-[#1e1e1e] text-[#cccccc] overflow-hidden font-sans">
+            {/* VS Code-style Menu Bar */}
+            <MenuBar
+                onCommand={handleCommand}
+                onQuickOpen={() => setShowQuickOpen(true)}
+                onGlobalSearch={() => setShowGlobalSearch(true)}
+                onSettings={() => setShowSettings(true)}
+                onTerminal={() => setShowTerminal(true)}
+                projectName="Collaborative-Code-Editor"
+            />
 
             {/* Settings Modal */}
             {showSettings && (
@@ -464,18 +663,15 @@ function App() {
                             />
                         </div>
 
-                        {/* Whiteboard Area */}
+                        {/* Figma-like Design Editor */}
                         <div
                             className={`flex-1 flex flex-col transition-all duration-300 ${activeView === 'editor' || activeView === 'maximize-video' ? 'hidden' : ''
                                 } ${activeView === 'split' ? 'w-1/2' : 'w-full'}`}
                         >
-                            <Whiteboard
+                            <FigmaCanvas
                                 roomId={roomId}
                                 userId={userId}
                                 userName={userName}
-                                isAdmin={isAdmin}
-                                onError={handleError}
-                                onUsersChange={handleUserListChange}
                             />
                         </div>
 
@@ -522,27 +718,109 @@ function App() {
                 </div>
             </main>
 
-            {/* Status Bar */}
-            <footer className="h-6 bg-primary/90 backdrop-blur text-white text-[10px] flex items-center justify-between px-3 select-none">
-                <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1.5 font-medium">
-                        <Monitor className="w-3 h-3" />
-                        main*
-                    </span>
-                    <span className="opacity-80">0 errors, 0 warnings</span>
-                    <span className="opacity-80">Theme: {currentTheme}</span>
+            {/* VS Code-style Status Bar */}
+            <footer className="h-[22px] bg-[#007acc] text-white text-[12px] flex items-center justify-between select-none">
+                {/* Left section */}
+                <div className="flex items-center h-full">
+                    {/* Remote indicator */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M12.5 12.5L9 9m3.5 3.5l-1-1m1 1l1 1M3.5 3.5L7 7m-3.5-3.5l1 1m-1-1l-1-1m11 6.5a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                        </svg>
+                    </button>
+                    
+                    {/* Branch */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                            <path fillRule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" clipRule="evenodd"/>
+                        </svg>
+                        <span>main*</span>
+                    </button>
+
+                    {/* Sync status */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1">
+                        {syncStatus.connected ? (
+                            <>
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                                    <path d="M2.5 5.5a3 3 0 013-3h5a3 3 0 013 3V9a3 3 0 01-3 3h-2v1h2a4 4 0 004-4V5.5a4 4 0 00-4-4h-5a4 4 0 00-4 4v.707l1.146-1.147a.5.5 0 01.708.708l-2 2a.5.5 0 01-.708 0l-2-2a.5.5 0 11.708-.708L2.5 5.707V5.5z"/>
+                                </svg>
+                                <span>{syncStatus.synced ? '0↓ 0↑' : 'Syncing...'}</span>
+                            </>
+                        ) : (
+                            <span className="text-yellow-300">Offline</span>
+                        )}
+                    </button>
+
+                    {/* Errors/Warnings */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zM1 8a7 7 0 1114 0A7 7 0 011 8z"/>
+                            <path d="M7.5 4v4h1V4h-1zm.5 6.5a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                        </svg>
+                        <span>0</span>
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                            <path fillRule="evenodd" d="M7.56 1h.88l6.54 12.26-.44.74H1.44l-.42-.74L7.56 1zm.44 1.7L2.68 13h10.64L8 2.7zM8 5v4h1V5H8zm0 5v2h1v-2H8z" clipRule="evenodd"/>
+                        </svg>
+                        <span>0</span>
+                    </button>
                 </div>
-                <div className="flex items-center gap-4 opacity-90">
+
+                {/* Right section */}
+                <div className="flex items-center h-full">
+                    {/* Video Call Button */}
+                    <button 
+                        onClick={() => setShowVideo(!showVideo)}
+                        className={`h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5 ${showVideo ? 'bg-[#1f8ad2]' : ''}`}
+                        title={showVideo ? "Hide Video Call" : "Start Video Call"}
+                    >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>{showVideo ? 'End Call' : 'Video'}</span>
+                    </button>
+
+                    {/* Collaborators */}
                     {onlineUsers.length > 0 && (
-                        <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            Active: {onlineUsers.map(u => u.name).join(', ')}
-                        </span>
+                        <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />
+                            <span>{onlineUsers.length + 1}</span>
+                        </button>
                     )}
-                    <span>Ln 1, Col 1</span>
-                    <span>UTF-8</span>
-                    <span>JavaScript</span>
-                    <span>✨ Enhanced</span>
+
+                    {/* Line/Column */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        Ln 1, Col 1
+                    </button>
+
+                    {/* Spaces */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        Spaces: 4
+                    </button>
+
+                    {/* Encoding */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        UTF-8
+                    </button>
+
+                    {/* Line ending */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        LF
+                    </button>
+
+                    {/* Language mode */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        JavaScript
+                    </button>
+
+                    {/* Copilot */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Notifications */}
+                    <button className="h-full px-2 hover:bg-[#1f8ad2]">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M13.377 10.573a7.63 7.63 0 01-.383-2.38V6.195a5.115 5.115 0 00-1.268-3.446 5.138 5.138 0 00-3.242-1.722c-.694-.072-1.4 0-2.07.227-.67.215-1.28.574-1.794 1.053a4.923 4.923 0 00-1.208 1.675 5.067 5.067 0 00-.431 2.022v2.2a7.61 7.61 0 01-.383 2.37L2 12.343l.479.658h3.505c0 .526.215 1.04.586 1.412.37.37.885.587 1.41.587.526 0 1.04-.215 1.411-.587s.587-.886.587-1.412h3.505l.478-.658-.586-1.77zm-4.69 3.147a.997.997 0 01-.705.299.997.997 0 01-.706-.3.999.999 0 01-.3-.705h1.999a.939.939 0 01-.287.706zm-5.515-1.71l.371-1.114a8.633 8.633 0 00.443-2.691V6.004c0-.563.12-1.113.347-1.616.227-.514.55-.969.969-1.34.419-.382.91-.67 1.436-.837.538-.18 1.1-.24 1.65-.18a4.147 4.147 0 012.597 1.4 4.133 4.133 0 011.004 2.776v2.01c0 .909.144 1.818.443 2.691l.371 1.113h-9.63v-.011z"/>
+                        </svg>
+                    </button>
                 </div>
             </footer>
 
@@ -572,6 +850,26 @@ function App() {
                 isOpen={showTemplates}
                 onClose={() => setShowTemplates(false)}
                 onSelectTemplate={handleSelectTemplate}
+            />
+
+            <QuickOpen
+                isOpen={showQuickOpen}
+                onClose={() => setShowQuickOpen(false)}
+                onSelect={(file) => {
+                    console.log('Quick open selected:', file);
+                    setActiveFile(file.path);
+                    setSelectedFile({ file, path: file.path });
+                }}
+            />
+
+            <GlobalSearch
+                isOpen={showGlobalSearch}
+                onClose={() => setShowGlobalSearch(false)}
+                onResultSelect={(result) => {
+                    console.log('Search result selected:', result);
+                    setActiveFile(result.filePath);
+                    setSelectedFile({ file: { name: result.filePath.split('/').pop() }, path: result.filePath });
+                }}
             />
         </div>
     );

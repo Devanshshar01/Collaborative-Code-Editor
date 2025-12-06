@@ -91,6 +91,72 @@ function executeJavaScript(code, res) {
 }
 
 function executePython(code, res) {
+    // Try different Python commands (python3 on some systems, python on others)
+    const pythonCommands = ['python3', 'python', 'py'];
+    let pythonCmd = 'python';
+    
+    // On Windows, try 'py' first as it's the Python Launcher
+    if (process.platform === 'win32') {
+        pythonCommands.unshift('py');
+    }
+
+    const tryPython = (cmdIndex) => {
+        if (cmdIndex >= pythonCommands.length) {
+            // None of the Python commands worked
+            return res.json({
+                stdout: '',
+                stderr: `Python is not installed or not in PATH.\n\nTo fix this:\n1. Install Python from https://www.python.org/downloads/ or Microsoft Store\n2. Make sure to check "Add Python to PATH" during installation\n3. Restart the execution server\n\nAlternatively, use JavaScript which runs without external dependencies.`,
+                exitCode: 9009
+            });
+        }
+
+        pythonCmd = pythonCommands[cmdIndex];
+        const pythonProcess = spawn(pythonCmd, ['-c', code]);
+
+        let stdout = '';
+        let stderr = '';
+        let hasError = false;
+
+        const timeout = setTimeout(() => {
+            pythonProcess.kill();
+            res.json({
+                stdout,
+                stderr: stderr + '\nExecution timed out',
+                exitCode: 124
+            });
+        }, 5000);
+
+        pythonProcess.stdout.on('data', (data) => {
+            stdout += data.toString();
+        });
+
+        pythonProcess.stderr.on('data', (data) => {
+            stderr += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+            clearTimeout(timeout);
+            if (!hasError) {
+                res.json({
+                    stdout,
+                    stderr,
+                    exitCode: code
+                });
+            }
+        });
+
+        pythonProcess.on('error', (err) => {
+            clearTimeout(timeout);
+            hasError = true;
+            // Try next Python command
+            tryPython(cmdIndex + 1);
+        });
+    };
+
+    tryPython(0);
+}
+
+function executePythonOld(code, res) {
     const pythonProcess = spawn('python', ['-c', code]);
 
     let stdout = '';

@@ -1,0 +1,128 @@
+# Docker Compose for LSP Server Infrastructure
+version: '3.8'
+
+services:
+  # Python LSP Server
+  lsp-python:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    image: lsp-server-python
+    volumes:
+      - workspace:/workspace
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
+
+  # TypeScript/JavaScript LSP Server
+  lsp-typescript:
+    build:
+      context: ./typescript
+      dockerfile: Dockerfile
+    image: lsp-server-typescript
+    volumes:
+      - workspace:/workspace
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1'
+
+  # C/C++ LSP Server (clangd)
+  lsp-cpp:
+    build:
+      context: ./cpp
+      dockerfile: Dockerfile
+    image: lsp-server-cpp
+    volumes:
+      - workspace:/workspace
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+
+  # Go LSP Server (gopls)
+  lsp-go:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    image: lsp-server-go
+    volumes:
+      - workspace:/workspace
+      - go-cache:/go
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+
+  # Java LSP Server (JDT.LS)
+  lsp-java:
+    build:
+      context: ./java
+      dockerfile: Dockerfile
+    image: lsp-server-java
+    volumes:
+      - workspace:/workspace
+      - maven-cache:/root/.m2
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+
+  # Rust LSP Server (rust-analyzer)
+  lsp-rust:
+    build:
+      context: ./rust
+      dockerfile: Dockerfile
+    image: lsp-server-rust
+    volumes:
+      - workspace:/workspace
+      - cargo-cache:/usr/local/cargo
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '2'
+
+  # Web LSP Server (HTML/CSS/JSON)
+  lsp-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: lsp-server-web
+    volumes:
+      - workspace:/workspace
+    networks:
+      - lsp-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+networks:
+  lsp-network:
+    driver: bridge
+
+volumes:
+  workspace:
+  go-cache:
+  maven-cache:
+  cargo-cache:
