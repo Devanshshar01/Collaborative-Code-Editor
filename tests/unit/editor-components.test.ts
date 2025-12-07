@@ -20,11 +20,11 @@ import {
   FindReplace,
   themes,
   getThemeByName,
-} from '../src/components/editor';
+} from '../../src/components/editor';
 import { LSPManager, CompletionItemKind } from '../../src/services/lsp-manager.js';
 
 // Mock providers
-vi.mock('../src/utils/yjs-provider', () => ({
+vi.mock('../../src/utils/yjs-provider', () => ({
   default: vi.fn().mockImplementation(() => ({
     getAwareness: vi.fn().mockReturnValue({
       setLocalStateField: vi.fn(),
