@@ -1,0 +1,116 @@
+.tooltip-container {
+    display: inline-block;
+    position: relative;
+}
+
+.tooltip {
+    position: absolute;
+    z-index: 1000;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+    background-color: #1a1a1a;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+}
+
+.tooltip.visible {
+    opacity: 1;
+}
+
+/* Placements */
+.tooltip-top {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+}
+
+.tooltip-top::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: #1a1a1a transparent transparent transparent;
+}
+
+.tooltip-bottom {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+}
+
+.tooltip-bottom::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: transparent transparent #1a1a1a transparent;
+}
+
+.tooltip-left {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%) translateX(-6px);
+}
+
+.tooltip-left::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: transparent transparent transparent #1a1a1a;
+}
+
+.tooltip-right {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%) translateX(6px);
+}
+
+.tooltip-right::after {
+    content: '';
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 4px;
+    border-style: solid;
+    border-color: transparent #1a1a1a transparent transparent;
+}
+
+/* Dark mode adjust */
+[data-theme='light'] .tooltip {
+    background-color: #1e293b;
+    color: #f8fafc;
+}
+
+[data-theme='light'] .tooltip-top::after {
+    border-color: #1e293b transparent transparent transparent;
+}
+
+[data-theme='light'] .tooltip-bottom::after {
+    border-color: transparent transparent #1e293b transparent;
+}
+
+[data-theme='light'] .tooltip-left::after {
+    border-color: transparent transparent transparent #1e293b;
+}
+
+[data-theme='light'] .tooltip-right::after {
+    border-color: transparent #1e293b transparent transparent;
+}

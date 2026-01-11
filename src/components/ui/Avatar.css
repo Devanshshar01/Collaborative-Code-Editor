@@ -1,0 +1,88 @@
+.avatar {
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    color: #fff;
+    position: relative;
+    user-select: none;
+    border: 2px solid var(--color-bg);
+    flex-shrink: 0;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+}
+
+.avatar-md {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+}
+
+.avatar-lg {
+    width: 56px;
+    height: 56px;
+    font-size: 18px;
+}
+
+.avatar-xl {
+    width: 80px;
+    height: 80px;
+    font-size: 24px;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 25%;
+    height: 25%;
+    border-radius: 50%;
+    border: 2px solid var(--color-bg);
+}
+
+.status-online {
+    background-color: var(--color-success);
+}
+
+.status-busy {
+    background-color: var(--color-error);
+}
+
+.status-away {
+    background-color: var(--color-warning);
+}
+
+.status-offline {
+    background-color: var(--color-text-secondary);
+}
+
+.avatar-group {
+    display: flex;
+    align-items: center;
+}
+
+.avatar-group .avatar {
+    margin-left: -12px;
+    transition: transform var(--transition-fast);
+}
+
+.avatar-group .avatar:hover {
+    transform: translateY(-4px);
+    z-index: 10;
+}
+
+.avatar-group .avatar:first-child {
+    margin-left: 0;
+}

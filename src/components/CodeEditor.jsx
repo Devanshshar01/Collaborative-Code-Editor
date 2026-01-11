@@ -17,6 +17,7 @@ import { defaultKeymap, historyKeymap } from '@codemirror/commands';
 import { Copy, FileCode, Users, Check, RefreshCw, Sun, Moon, Command, Play, Terminal, XCircle, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 import YjsWebSocketProvider from '../utils/yjs-provider';
+import OutputPanel from './Editor/OutputPanel';
 
 // User colors for cursors
 const USER_COLORS = [
@@ -531,39 +532,13 @@ const CodeEditor = ({
 
                 {/* Output Panel */}
                 {showOutput && (
-                    <div className="h-1/3 border-t border-white/10 bg-[#1e1e1e] flex flex-col animate-slide-up">
-                        <div className="flex items-center justify-between px-4 py-2 bg-surface border-b border-white/5">
-                            <div className="flex items-center gap-2 text-xs font-bold text-text-secondary uppercase tracking-wider">
-                                <Terminal className="w-3.5 h-3.5" />
-                                Console Output
-                            </div>
-                            <button
-                                onClick={() => setShowOutput(false)}
-                                className="text-text-secondary hover:text-white transition-colors"
-                            >
-                                <XCircle className="w-4 h-4" />
-                            </button>
-                        </div>
-                        <div className="flex-1 p-4 overflow-auto font-mono text-xs">
-                            {output ? (
-                                <>
-                                    {output.stdout && (
-                                        <pre className="text-text-primary whitespace-pre-wrap">{output.stdout}</pre>
-                                    )}
-                                    {output.stderr && (
-                                        <pre className="text-red-400 whitespace-pre-wrap mt-2">{output.stderr}</pre>
-                                    )}
-                                    <div className="mt-4 text-[10px] text-text-muted">
-                                        Process exited with code {output.exitCode}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex items-center gap-2 text-text-muted">
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    Running code...
-                                </div>
-                            )}
-                        </div>
+                    <div className="h-1/3 border-t border-white/10 flex flex-col animate-slide-up bg-surface">
+                        <OutputPanel
+                            output={output}
+                            isRunning={isRunning}
+                            onClose={() => setShowOutput(false)}
+                            className="h-full"
+                        />
                     </div>
                 )}
             </div>

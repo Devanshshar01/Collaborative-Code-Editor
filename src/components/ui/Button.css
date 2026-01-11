@@ -1,0 +1,111 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    border: none;
+    border-radius: var(--radius-base);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Variants */
+.btn-primary {
+    background-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:active {
+    background-color: var(--color-primary-dark);
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-surface-hover);
+    border-color: var(--color-text-secondary);
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: var(--color-text-primary);
+}
+
+.btn-ghost:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.btn-danger {
+    background-color: var(--color-error);
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    filter: brightness(0.9);
+}
+
+/* Sizes */
+.btn-sm {
+    height: 32px;
+    padding: 0 var(--space-md);
+    font-size: var(--text-small);
+}
+
+.btn-md {
+    height: 40px;
+    padding: 0 var(--space-lg);
+    font-size: var(--text-body);
+}
+
+.btn-lg {
+    height: 48px;
+    padding: 0 var(--space-xl);
+    font-size: 16px;
+}
+
+/* Loading */
+.btn-loading .btn-content {
+    visibility: hidden;
+}
+
+.btn-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}

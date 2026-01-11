@@ -4,68 +4,68 @@ module.exports = {
         "./src/**/*.{js,jsx,ts,tsx}",
         "./public/index.html"
     ],
+    darkMode: ['class', '[data-theme="dark"]'],
     theme: {
         extend: {
             colors: {
-                background: {
-                    DEFAULT: '#0f1117',
-                    secondary: '#161b22',
-                    tertiary: '#21262d',
-                },
                 primary: {
-                    DEFAULT: '#3b82f6', // Bright Blue
-                    hover: '#2563eb',
-                    light: '#60a5fa',
+                    DEFAULT: 'var(--color-primary)',
+                    hover: 'var(--color-primary-hover)',
+                    dark: 'var(--color-primary-dark)',
+                    light: 'var(--color-primary)', // Accessing light var if needed or same
                 },
                 secondary: {
-                    DEFAULT: '#8b5cf6', // Violet
-                    hover: '#7c3aed',
+                    DEFAULT: 'var(--color-secondary)',
                 },
                 accent: {
-                    teal: '#14b8a6',
+                    DEFAULT: 'var(--color-accent)',
+                    teal: '#14b8a6', // Keep for backward compat if needed
                     pink: '#ec4899',
                     orange: '#f97316',
                 },
-                surface: {
-                    DEFAULT: '#1e293b',
-                    light: '#334155',
-                    lighter: '#475569',
+                background: {
+                    DEFAULT: 'var(--color-bg)',
+                    secondary: 'var(--color-surface)',
+                    tertiary: 'var(--color-surface-hover)',
                 },
-                border: {
-                    DEFAULT: '#30363d',
-                    light: '#4b5563',
+                surface: {
+                    DEFAULT: 'var(--color-surface)',
+                    light: 'var(--color-surface-hover)',
+                    lighter: 'var(--color-border)', // Approx
+                    dark: 'var(--color-bg)',
                 },
                 text: {
-                    primary: '#f1f5f9',
-                    secondary: '#94a3b8',
-                    muted: '#64748b',
-                }
+                    primary: 'var(--color-text-primary)',
+                    secondary: 'var(--color-text-secondary)',
+                    tertiary: 'var(--color-text-tertiary)',
+                    muted: 'var(--color-text-tertiary)',
+                },
+                border: {
+                    DEFAULT: 'var(--color-border)',
+                },
+                success: 'var(--color-success)',
+                warning: 'var(--color-warning)',
+                error: 'var(--color-error)',
+                info: 'var(--color-info)',
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
-                mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+                sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+                mono: ['var(--font-mono)', 'monospace'],
+            },
+            borderRadius: {
+                sm: 'var(--radius-sm)',
+                md: 'var(--radius-md)',
+                lg: 'var(--radius-lg)',
+                full: 'var(--radius-full)',
             },
             boxShadow: {
-                'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-                'glow': '0 0 15px rgba(59, 130, 246, 0.5)',
+                xs: 'var(--shadow-xs)',
+                sm: 'var(--shadow-sm)',
+                md: 'var(--shadow-md)',
+                lg: 'var(--shadow-lg)',
+                xl: 'var(--shadow-xl)',
             },
-            animation: {
-                'fade-in': 'fadeIn 0.3s ease-out',
-                'slide-up': 'slideUp 0.4s ease-out',
-                'pulse-slow': 'pulse 3s infinite',
-            },
-            keyframes: {
-                fadeIn: {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
-                },
-                slideUp: {
-                    '0%': { transform: 'translateY(20px)', opacity: '0' },
-                    '100%': { transform: 'translateY(0)', opacity: '1' },
-                }
-            }
         },
     },
     plugins: [],
-    darkMode: 'class'
 }

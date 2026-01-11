@@ -53,21 +53,21 @@ const getFileIcon = (name, isFolder, isExpanded) => {
     }
 
     const ext = name.split('.').pop()?.toLowerCase();
-    
+
     const iconMap = {
         // JavaScript/TypeScript
         js: <FileCode className="w-4 h-4 text-yellow-400" />,
         jsx: <FileCode className="w-4 h-4 text-[#61DAFB]" />,
         ts: <FileCode className="w-4 h-4 text-blue-500" />,
         tsx: <FileCode className="w-4 h-4 text-blue-400" />,
-        
+
         // Web
         html: <Globe className="w-4 h-4 text-orange-500" />,
         htm: <Globe className="w-4 h-4 text-orange-500" />,
         css: <Hash className="w-4 h-4 text-blue-500" />,
         scss: <Hash className="w-4 h-4 text-pink-400" />,
         less: <Hash className="w-4 h-4 text-blue-400" />,
-        
+
         // Data
         json: <Braces className="w-4 h-4 text-yellow-500" />,
         yaml: <FileText className="w-4 h-4 text-red-400" />,
@@ -75,7 +75,7 @@ const getFileIcon = (name, isFolder, isExpanded) => {
         xml: <FileText className="w-4 h-4 text-orange-400" />,
         csv: <Database className="w-4 h-4 text-green-500" />,
         sql: <Database className="w-4 h-4 text-blue-400" />,
-        
+
         // Programming
         py: <FileCode className="w-4 h-4 text-yellow-500" />,
         java: <FileCode className="w-4 h-4 text-red-500" />,
@@ -88,21 +88,21 @@ const getFileIcon = (name, isFolder, isExpanded) => {
         php: <FileCode className="w-4 h-4 text-purple-500" />,
         swift: <FileCode className="w-4 h-4 text-orange-400" />,
         kt: <FileCode className="w-4 h-4 text-purple-400" />,
-        
+
         // Config
         gitignore: <GitBranch className="w-4 h-4 text-orange-500" />,
         env: <Cog className="w-4 h-4 text-yellow-500" />,
         config: <Settings className="w-4 h-4 text-gray-400" />,
         toml: <Settings className="w-4 h-4 text-gray-400" />,
         ini: <Settings className="w-4 h-4 text-gray-400" />,
-        
+
         // Documentation
         md: <FileText className="w-4 h-4 text-blue-400" />,
         txt: <FileText className="w-4 h-4 text-gray-400" />,
         pdf: <FileType className="w-4 h-4 text-red-500" />,
         doc: <FileType className="w-4 h-4 text-blue-500" />,
         docx: <FileType className="w-4 h-4 text-blue-500" />,
-        
+
         // Images
         png: <Image className="w-4 h-4 text-purple-400" />,
         jpg: <Image className="w-4 h-4 text-purple-400" />,
@@ -110,7 +110,7 @@ const getFileIcon = (name, isFolder, isExpanded) => {
         gif: <Image className="w-4 h-4 text-purple-400" />,
         svg: <Image className="w-4 h-4 text-orange-400" />,
         ico: <Image className="w-4 h-4 text-yellow-400" />,
-        
+
         // Package
         'package.json': <Package className="w-4 h-4 text-green-500" />,
         'package-lock.json': <Package className="w-4 h-4 text-red-400" />,
@@ -188,11 +188,10 @@ const TreeNode = React.memo(({
     return (
         <div
             className={clsx(
-                'flex items-center gap-1 px-2 py-[3px] cursor-pointer select-none group',
-                'hover:bg-[#2a2d2e] transition-colors duration-75',
-                isSelected && 'bg-[#094771]',
-                isActive && !isSelected && 'bg-[#37373d]',
-                isDragOver && 'bg-[#383b3d] border-t border-blue-500'
+                'tree-node',
+                isSelected && 'selected',
+                isActive && !isSelected && 'active',
+                isDragOver && 'drag-over'
             )}
             style={{ paddingLeft: `${depth * 16 + 8}px` }}
             onClick={(e) => onSelect(node.id, e.ctrlKey, e.shiftKey)}
@@ -207,16 +206,16 @@ const TreeNode = React.memo(({
             {/* Expand/collapse arrow */}
             {node.type !== 'file' ? (
                 <button
-                    className="p-0.5 hover:bg-[#3c3c3c] rounded"
+                    className="tree-node-arrow"
                     onClick={(e) => {
                         e.stopPropagation();
                         onToggle(node.id);
                     }}
                 >
                     {isExpanded ? (
-                        <ChevronDown className="w-3.5 h-3.5 text-[#858585]" />
+                        <ChevronDown className="w-3.5 h-3.5" />
                     ) : (
-                        <ChevronRight className="w-3.5 h-3.5 text-[#858585]" />
+                        <ChevronRight className="w-3.5 h-3.5" />
                     )}
                 </button>
             ) : (
@@ -235,15 +234,11 @@ const TreeNode = React.memo(({
                     onChange={(e) => setEditName(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onBlur={() => onRenameComplete(node.id, editName)}
-                    className="flex-1 bg-[#3c3c3c] text-[#cccccc] text-xs px-1 py-0.5 
-                             border border-[#007acc] outline-none rounded"
+                    className="tree-node-rename-input"
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : (
-                <span className={clsx(
-                    'text-xs truncate flex-1',
-                    node.gitStatus ? 'text-[#cccccc]' : 'text-[#cccccc]'
-                )}>
+                <span className="tree-node-name">
                     {node.name}
                 </span>
             )}
@@ -271,7 +266,7 @@ const FileExplorer = ({
     const parentRef = useRef(null);
     const [contextMenu, setContextMenu] = useState(null);
     const [dragOverId, setDragOverId] = useState(null);
-    
+
     // Zustand store
     const {
         nodes,
@@ -302,14 +297,14 @@ const FileExplorer = ({
     useEffect(() => {
         if (files && files.length > 0 && !fileTreeManager) {
             initWorkspace('/', 'EXPLORER');
-            
+
             // Convert simple file tree to our format
             const processNode = (node, parentId = 'root', depth = 0) => {
                 const id = node.id || `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                 const path = node.path || node.name;
-                
+
                 addNode(parentId, node.name, node.type || 'file', node.content || '', path);
-                
+
                 if (node.children && Array.isArray(node.children)) {
                     node.children.forEach(child => processNode(child, id, depth + 1));
                 }
@@ -333,7 +328,7 @@ const FileExplorer = ({
         const loadTree = () => {
             const data = fileTreeManager.getFileTreeData();
             initWorkspace('/', 'EXPLORER');
-            
+
             // Convert fileTreeManager data to our format
             const convertNode = (nodeData, parentId) => {
                 const id = nodeData.id || `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -427,22 +422,22 @@ const FileExplorer = ({
     const handleDrop = useCallback((e, targetNode) => {
         e.preventDefault();
         const sourceId = e.dataTransfer.getData('text/plain');
-        
+
         if (sourceId && sourceId !== targetNode.id) {
             const targetId = targetNode.type === 'file' ? targetNode.parentId : targetNode.id;
             moveNode(sourceId, targetId);
         }
-        
+
         setDragOverId(null);
     }, [moveNode]);
 
     const handleRenameComplete = useCallback((nodeId, newName) => {
         const node = nodes.get(nodeId);
         const oldPath = node?.path;
-        
+
         if (newName && newName.trim()) {
             renameNode(nodeId, newName.trim());
-            
+
             // Calculate new path
             if (oldPath) {
                 const pathParts = oldPath.split('/');
@@ -456,13 +451,13 @@ const FileExplorer = ({
 
     // Context menu actions
     const handleNewFile = useCallback(() => {
-        const parentId = contextMenu?.node?.type === 'folder' 
-            ? contextMenu.node.id 
+        const parentId = contextMenu?.node?.type === 'folder'
+            ? contextMenu.node.id
             : contextMenu?.node?.parentId || 'root';
-        
+
         const parentNode = nodes.get(parentId);
         const parentPath = parentNode?.path || '';
-        
+
         const newId = addNode(parentId, 'untitled.txt', 'file', '');
         if (newId) {
             startRenaming(newId);
@@ -475,10 +470,10 @@ const FileExplorer = ({
         const parentId = contextMenu?.node?.type === 'folder'
             ? contextMenu.node.id
             : contextMenu?.node?.parentId || 'root';
-        
+
         const parentNode = nodes.get(parentId);
         const parentPath = parentNode?.path || '';
-        
+
         const newId = addNode(parentId, 'New Folder', 'folder');
         if (newId) {
             startRenaming(newId);
@@ -492,7 +487,7 @@ const FileExplorer = ({
             const confirmMsg = contextMenu.node.type === 'folder'
                 ? `Delete folder "${contextMenu.node.name}" and all contents?`
                 : `Delete "${contextMenu.node.name}"?`;
-            
+
             if (window.confirm(confirmMsg)) {
                 removeNode(contextMenu.node.id);
                 onDelete?.(contextMenu.node.path);
@@ -552,8 +547,8 @@ const FileExplorer = ({
             } else if (e.ctrlKey && e.key === 'x') {
                 cutToClipboard(selectedIds);
             } else if (e.ctrlKey && e.key === 'v') {
-                const targetId = selectedIds.size === 1 
-                    ? Array.from(selectedIds)[0] 
+                const targetId = selectedIds.size === 1
+                    ? Array.from(selectedIds)[0]
                     : 'root';
                 pasteFromClipboard(targetId);
             }
@@ -576,29 +571,25 @@ const FileExplorer = ({
     ];
 
     return (
-        <div className={clsx('flex flex-col h-full bg-[#252526]', className)}>
+        <div className={clsx('file-explorer', className)}>
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 text-[11px] font-medium 
-                          text-[#bbbbbb] uppercase tracking-wider border-b border-[#3c3c3c]">
-                <span>Explorer</span>
-                <div className="flex items-center gap-1">
+            <div className="file-explorer-header">
+                <h3>Explorer</h3>
+                <div className="file-explorer-actions">
                     <button
                         onClick={() => handleNewFile()}
-                        className="p-1 hover:bg-[#3c3c3c] rounded"
                         title="New File"
                     >
                         <FilePlus className="w-4 h-4" />
                     </button>
                     <button
                         onClick={() => handleNewFolder()}
-                        className="p-1 hover:bg-[#3c3c3c] rounded"
                         title="New Folder"
                     >
                         <FolderPlus className="w-4 h-4" />
                     </button>
                     <button
                         onClick={collapseAll}
-                        className="p-1 hover:bg-[#3c3c3c] rounded"
                         title="Collapse All"
                     >
                         <RefreshCw className="w-4 h-4" />
@@ -607,10 +598,9 @@ const FileExplorer = ({
             </div>
 
             {/* File Tree */}
-            <div 
+            <div
                 ref={parentRef}
-                className="flex-1 overflow-auto"
-                style={{ height: '100%' }}
+                className="file-tree-virtualized"
             >
                 <div
                     style={{
@@ -660,10 +650,10 @@ const FileExplorer = ({
 
             {/* Empty state */}
             {flatTree.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-[#858585] text-sm p-4">
+                <div className="flex flex-col items-center justify-center h-full text-text-tertiary text-sm p-4">
                     <Folder className="w-12 h-12 mb-3 opacity-50" />
-                    <p className="text-center">No files yet</p>
-                    <p className="text-xs text-center mt-1">
+                    <p className="text-center font-medium">No files yet</p>
+                    <p className="text-xs text-center mt-1 opacity-70">
                         Create a new file or folder to get started
                     </p>
                 </div>

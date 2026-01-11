@@ -38,15 +38,20 @@ import Breadcrumbs from './components/Breadcrumbs';
 import MenuBar from './components/MenuBar';
 import { useSocket } from './hooks/useSocket';
 import { useWorkspaceStore } from './stores/workspaceStore';
+import ToastContainer from './components/Toast/ToastContainer';
 import './App.css';
 import './index.css';
 import './components/FileExplorer.css';
 
 function App() {
-    const [showLanding, setShowLanding] = useState(true);
     const [roomId] = useState(() => {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('room') || `room-${Math.random().toString(36).substr(2, 9)}`;
+    });
+
+    const [showLanding, setShowLanding] = useState(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return !urlParams.get('room');
     });
 
     const [userId] = useState(() => {
@@ -213,9 +218,9 @@ function App() {
                     files.forEach(file => {
                         const reader = new FileReader();
                         reader.onload = (ev) => {
-                            setSelectedFile({ 
-                                file: { name: file.name, content: ev.target.result }, 
-                                path: file.name 
+                            setSelectedFile({
+                                file: { name: file.name, content: ev.target.result },
+                                path: file.name
                             });
                         };
                         reader.readAsText(file);
@@ -725,14 +730,14 @@ function App() {
                     {/* Remote indicator */}
                     <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M12.5 12.5L9 9m3.5 3.5l-1-1m1 1l1 1M3.5 3.5L7 7m-3.5-3.5l1 1m-1-1l-1-1m11 6.5a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>
+                            <path d="M12.5 12.5L9 9m3.5 3.5l-1-1m1 1l1 1M3.5 3.5L7 7m-3.5-3.5l1 1m-1-1l-1-1m11 6.5a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
                         </svg>
                     </button>
-                    
+
                     {/* Branch */}
                     <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                            <path fillRule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z" clipRule="evenodd" />
                         </svg>
                         <span>main*</span>
                     </button>
@@ -742,7 +747,7 @@ function App() {
                         {syncStatus.connected ? (
                             <>
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                                    <path d="M2.5 5.5a3 3 0 013-3h5a3 3 0 013 3V9a3 3 0 01-3 3h-2v1h2a4 4 0 004-4V5.5a4 4 0 00-4-4h-5a4 4 0 00-4 4v.707l1.146-1.147a.5.5 0 01.708.708l-2 2a.5.5 0 01-.708 0l-2-2a.5.5 0 11.708-.708L2.5 5.707V5.5z"/>
+                                    <path d="M2.5 5.5a3 3 0 013-3h5a3 3 0 013 3V9a3 3 0 01-3 3h-2v1h2a4 4 0 004-4V5.5a4 4 0 00-4-4h-5a4 4 0 00-4 4v.707l1.146-1.147a.5.5 0 01.708.708l-2 2a.5.5 0 01-.708 0l-2-2a.5.5 0 11.708-.708L2.5 5.707V5.5z" />
                                 </svg>
                                 <span>{syncStatus.synced ? '0↓ 0↑' : 'Syncing...'}</span>
                             </>
@@ -754,12 +759,12 @@ function App() {
                     {/* Errors/Warnings */}
                     <button className="h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zM1 8a7 7 0 1114 0A7 7 0 011 8z"/>
-                            <path d="M7.5 4v4h1V4h-1zm.5 6.5a.75.75 0 100 1.5.75.75 0 000-1.5z"/>
+                            <path d="M8 2a6 6 0 100 12A6 6 0 008 2zM1 8a7 7 0 1114 0A7 7 0 011 8z" />
+                            <path d="M7.5 4v4h1V4h-1zm.5 6.5a.75.75 0 100 1.5.75.75 0 000-1.5z" />
                         </svg>
                         <span>0</span>
                         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.56 1h.88l6.54 12.26-.44.74H1.44l-.42-.74L7.56 1zm.44 1.7L2.68 13h10.64L8 2.7zM8 5v4h1V5H8zm0 5v2h1v-2H8z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M7.56 1h.88l6.54 12.26-.44.74H1.44l-.42-.74L7.56 1zm.44 1.7L2.68 13h10.64L8 2.7zM8 5v4h1V5H8zm0 5v2h1v-2H8z" clipRule="evenodd" />
                         </svg>
                         <span>0</span>
                     </button>
@@ -768,7 +773,7 @@ function App() {
                 {/* Right section */}
                 <div className="flex items-center h-full">
                     {/* Video Call Button */}
-                    <button 
+                    <button
                         onClick={() => setShowVideo(!showVideo)}
                         className={`h-full px-2 hover:bg-[#1f8ad2] flex items-center gap-1.5 ${showVideo ? 'bg-[#1f8ad2]' : ''}`}
                         title={showVideo ? "Hide Video Call" : "Start Video Call"}
@@ -818,7 +823,7 @@ function App() {
                     {/* Notifications */}
                     <button className="h-full px-2 hover:bg-[#1f8ad2]">
                         <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M13.377 10.573a7.63 7.63 0 01-.383-2.38V6.195a5.115 5.115 0 00-1.268-3.446 5.138 5.138 0 00-3.242-1.722c-.694-.072-1.4 0-2.07.227-.67.215-1.28.574-1.794 1.053a4.923 4.923 0 00-1.208 1.675 5.067 5.067 0 00-.431 2.022v2.2a7.61 7.61 0 01-.383 2.37L2 12.343l.479.658h3.505c0 .526.215 1.04.586 1.412.37.37.885.587 1.41.587.526 0 1.04-.215 1.411-.587s.587-.886.587-1.412h3.505l.478-.658-.586-1.77zm-4.69 3.147a.997.997 0 01-.705.299.997.997 0 01-.706-.3.999.999 0 01-.3-.705h1.999a.939.939 0 01-.287.706zm-5.515-1.71l.371-1.114a8.633 8.633 0 00.443-2.691V6.004c0-.563.12-1.113.347-1.616.227-.514.55-.969.969-1.34.419-.382.91-.67 1.436-.837.538-.18 1.1-.24 1.65-.18a4.147 4.147 0 012.597 1.4 4.133 4.133 0 011.004 2.776v2.01c0 .909.144 1.818.443 2.691l.371 1.113h-9.63v-.011z"/>
+                            <path d="M13.377 10.573a7.63 7.63 0 01-.383-2.38V6.195a5.115 5.115 0 00-1.268-3.446 5.138 5.138 0 00-3.242-1.722c-.694-.072-1.4 0-2.07.227-.67.215-1.28.574-1.794 1.053a4.923 4.923 0 00-1.208 1.675 5.067 5.067 0 00-.431 2.022v2.2a7.61 7.61 0 01-.383 2.37L2 12.343l.479.658h3.505c0 .526.215 1.04.586 1.412.37.37.885.587 1.41.587.526 0 1.04-.215 1.411-.587s.587-.886.587-1.412h3.505l.478-.658-.586-1.77zm-4.69 3.147a.997.997 0 01-.705.299.997.997 0 01-.706-.3.999.999 0 01-.3-.705h1.999a.939.939 0 01-.287.706zm-5.515-1.71l.371-1.114a8.633 8.633 0 00.443-2.691V6.004c0-.563.12-1.113.347-1.616.227-.514.55-.969.969-1.34.419-.382.91-.67 1.436-.837.538-.18 1.1-.24 1.65-.18a4.147 4.147 0 012.597 1.4 4.133 4.133 0 011.004 2.776v2.01c0 .909.144 1.818.443 2.691l.371 1.113h-9.63v-.011z" />
                         </svg>
                     </button>
                 </div>
@@ -871,6 +876,8 @@ function App() {
                     setSelectedFile({ file: { name: result.filePath.split('/').pop() }, path: result.filePath });
                 }}
             />
+            {/* Toast Notifications */}
+            <ToastContainer />
         </div>
     );
 }

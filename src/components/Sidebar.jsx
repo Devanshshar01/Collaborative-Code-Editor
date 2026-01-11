@@ -20,6 +20,8 @@ import {
 import clsx from 'clsx';
 import FileExplorer from './FileExplorer';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import Avatar, { AvatarGroup } from './ui/Avatar';
+import Badge from './ui/Badge';
 
 const Sidebar = ({
     roomId,
@@ -331,10 +333,11 @@ const Sidebar = ({
                         {/* Current user */}
                         <div className="flex items-center gap-3 px-4 py-2 hover:bg-white/5 transition-colors">
                             <div className="relative">
-                                <div
-                                    className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-primary/20">
-                                    {userName[0]?.toUpperCase()}
-                                </div>
+                                <Avatar
+                                    alt={userName}
+                                    color="transparent"
+                                    className="bg-gradient-to-br from-primary to-secondary text-white shadow-lg shadow-primary/20"
+                                />
                                 <Circle
                                     className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 fill-green-500 text-green-500 ring-2 ring-surface" />
                             </div>
@@ -353,12 +356,11 @@ const Sidebar = ({
                                 className="flex items-center gap-3 px-4 py-2 hover:bg-white/5 transition-colors"
                             >
                                 <div className="relative">
-                                    <div
-                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg"
-                                        style={{ backgroundColor: participant.color || '#666' }}
-                                    >
-                                        {participant.name?.[0]?.toUpperCase() || 'U'}
-                                    </div>
+                                    <Avatar
+                                        alt={participant.name || 'U'}
+                                        color={participant.color || '#666'}
+                                        className="text-white shadow-lg"
+                                    />
                                     <Circle
                                         className={clsx(
                                             'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 ring-2 ring-surface',
